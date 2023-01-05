@@ -19,6 +19,8 @@ $ git clone https://github.com/FUMVar/FUMVar.git
 ```
 $ virtualenv -p python3 venv
 $ . ./venv/bin/activate
+## ssdeep requirements
+(venv) sudo apt-get install build-essential libffi-dev python3 python3-dev python3-pip libfuzzy-dev
 (venv) $ pip install -r requirements.txt
 ```
 
