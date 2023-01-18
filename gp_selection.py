@@ -31,8 +31,8 @@ class origin:
         self.name = fname
         self.fbytes = fbytes
         self.cuckoosig = anal.get_cuckoo_report(fname)["signatures"]
-        self.md5 = anal.send_vt_scan(fname,random.choice(apikeylist))
-        self.vt_result, vt_report = anal.vt_analysis(self.md5)
+        self.md5 = anal.send_v2_vt_scan(fname, random.choice(apikeylist))
+        self.vt_result, vt_report = anal.vt_v2_analysis(self.md5)
         self.vt_dlist = [data for data in vt_report["scans"].keys() if vt_report["scans"][data]["detected"] == True]
         # print (self.vt_dlist)
         
@@ -120,7 +120,7 @@ class GP:
             pop.fname = original.name.replace(".exe","_m"+str(i)+".exe")
             # print (pop.fname)
             pop.diff = difference(original.fbytes,pop.fbytes)
-            pop.md5 = anal.send_vt_scan(pop.fname,apikeylist[(chosen_idx+i)%apilen])
+            pop.md5 = anal.send_v2_vt_scan(pop.fname, apikeylist[(chosen_idx + i) % apilen])
             i+=1
         
         ck = 0
@@ -159,7 +159,7 @@ class GP:
                 ck = 0
                 continue
 
-            pop.vt_result, vt_report = anal.vt_analysis(pop.md5)
+            pop.vt_result, vt_report = anal.vt_v2_analysis(pop.md5)
             pop.vt_dlist = [data for data in vt_report["scans"].keys() if vt_report["scans"][data]["detected"] == True]
 
             pop.scoring()

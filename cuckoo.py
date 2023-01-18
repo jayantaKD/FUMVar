@@ -1,29 +1,32 @@
 import os
-from pyvirtualdisplay import Display
+#from pyvirtualdisplay import Display
 from multiprocessing import Pool, Process
 import subprocess as sp
 
 def create_hostonly_net():
     os.system("VBoxManage hostonlyif create")
-    os.system("VBoxManage hostonlyif ipconfig vboxnet0 --ip 192.168.56.1")
-    os.system("sudo iptables -t nat -A POSTROUTING -o ens4 -s 192.168.56.0/24 -j MASQUERADE")
-    os.system("sudo iptables -A FORWARD -o ens4 -i vboxnet0 -s 192.168.56.0/24 -m conntrack --ctstate NEW -j ACCEPT")
+    #os.system("VBoxManage hostonlyif ipconfig vboxnet0 --ip 192.168.56.1")
+    os.system("VBoxManage hostonlyif ipconfig vboxnet0 --ip 192.168.1.101")
+    #os.system("sudo iptables -t nat -A POSTROUTING -o ens4 -s 192.168.56.0/24 -j MASQUERADE")
+    os.system("sudo iptables -t nat -A POSTROUTING -o wlp3s0 -s 192.168.1.0/24 -j MASQUERADE")
+    #os.system("sudo iptables -A FORWARD -o ens4 -i vboxnet0 -s 192.168.56.0/24 -m conntrack --ctstate NEW -j ACCEPT")
+    os.system("sudo iptables -A FORWARD -o wlp3s0 -i vboxnet0 -s 192.168.1.0/24 -m conntrack --ctstate NEW -j ACCEPT")
     os.system("sudo iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT")
     os.system("sudo iptables -A POSTROUTING -t nat -j MASQUERADE")
     os.system("sudo sysctl -w net.ipv4.ip_forward=1")
 
 def virtualbox():
-    disp = Display().start()
+    #disp = Display().start()
     os.system("sudo virtualbox")
 
 def cuckoo_debug():
-    os.system("sudo cuckoo --cwd /home/.cuckoo")
+    os.system("sudo cuckoo --cwd /home/infobeyond/.cuckoo")
 
 def cuckoo_api():
-    os.system("sudo cuckoo --cwd /home/.cuckoo api")
+    os.system("sudo cuckoo --cwd /home/infobeyond/.cuckoo api")
 
 def cuckoo_web():
-    os.system("sudo cuckoo --cwd /home/.cuckoo web")
+    os.system("sudo cuckoo --cwd /home/infobeyond/.cuckoo web")
 
 
 if __name__ == "__main__":
