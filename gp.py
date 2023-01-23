@@ -17,6 +17,9 @@ apilen = len(apikeylist)
 pertlist = ["overlay_append", "upx_pack", "upx_unpack", "inject_random_codecave", "section_rename", "pert_dos_stub",
             "pert_optional_header_dllchlist", "pert_rich_header", "pert_dos_header", "section_add", "section_append",
             "pert_optional_header", "pert_coff_header", "pert_data_directory"]
+
+elf_pertlist = ["elf_overlay_append", "elf_upx_pack", "elf_upx_unpack", "elf_inject_random_codecave", "elf_section_rename", "elf_section_add", "elf_section_append"]
+
 one_time = ['upx_unpack', 'upx_pack', 'break_optional_header_checksum', 'remove_signature', 'remove_debug']
 
 
@@ -119,7 +122,7 @@ class GP:
                 i += 1
                 continue
             # p.build_lief(pop.fbytes,original.name)
-            p.build_lief_name(pop.fbytes, original.name, "m" + str(i))
+            # p.build_lief_name(pop.fbytes, original.name, "m" + str(i))
             ####### pop.fname = original.name.replace(".exe", "_m" + str(i) + ".exe")
             pop.fname = original.name + "_m" + str(i)
             # print (pop.fname)

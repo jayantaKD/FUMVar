@@ -11,12 +11,12 @@ import signal
 import pefile
 
 module_path = os.path.split(os.path.abspath(sys.modules[__name__].__file__))[0]
-
 COMMON_SECTION_NAMES = open(os.path.join(
     module_path, 'section_names.txt'), 'r').read().rstrip().split('\n')
 COMMON_IMPORTS = json.load(
     open(os.path.join(module_path, 'small_dll_imports.json'), 'r'))
-
+STUB_FILE = "hello_lief.bin"
+STUB = lief.parse(os.path.join(module_path, STUB_FILE))
 
 def lastindex(bytelist):
     for i in range(len(bytelist) - 1, 0, -1):
@@ -34,6 +34,14 @@ def fparsed_to_bytes(fparsed, im=False):
     builder.build()
     return array.array('B', builder.get_build()).tobytes()
 
+def elf_fparsed_to_bytes(fparsed, im=False):
+    builder = lief.ELF.Builder(fparsed)
+    if im:
+        builder.build_imports(True)
+        builder.patch_imports(True)
+    # builder.build_overlay(True)
+    builder.build()
+    return array.array('B', builder.get_build()).tobytes()
 
 # success
 def overlay_append(fbytes, seed=None):
@@ -42,8 +50,15 @@ def overlay_append(fbytes, seed=None):
     upper = random.randrange(128)
     new_fbytes = fbytes + bytes([random.randint(0, upper) for _ in range(l)])
     new_fparsed = lief.parse(new_fbytes)
-
     return fparsed_to_bytes(new_fparsed)
+
+def elf_overlay_append(fbytes, seed=None):
+    random.seed(seed)
+    l = 2 ** random.randint(5, 8)
+    upper = random.randrange(128)
+    new_fbytes = fbytes + bytes([random.randint(0, upper) for _ in range(l)])
+    new_fparsed = lief.parse(new_fbytes)
+    return elf_fparsed_to_bytes(new_fparsed)
 
 
 def imports_append(fbytes, seed=None):
@@ -103,9 +118,18 @@ def section_add(fbytes, seed=None):
 
     return fparsed_to_bytes(fparsed)
 
+def elf_section_add(fbytes, seed=None):
+    random.seed(seed)
+    fparsed = lief.parse(fbytes)
+    i = random.randrange(1, 1000)
+    section = lief.ELF.Section(f".test.{i}", lief.ELF.SECTION_TYPES.PROGBITS)
+    section += lief.ELF.SECTION_FLAGS.EXECINSTR
+    section += lief.ELF.SECTION_FLAGS.WRITE
+    section.content = STUB.segments[0].content  # First LOAD segment which holds payload
+    fparsed.add(section, loaded=False)
+    return elf_fparsed_to_bytes(fparsed)
 
-# fail
-def section_append(fbytes, seed=None):
+def section_append_(fbytes, seed=None):
     random.seed(seed)
     fparsed = lief.parse(fbytes)
     targeted_section = random.choice(fparsed.sections)
@@ -128,8 +152,13 @@ def section_append(fbytes, seed=None):
     # temp = temp + [random.randint(0, upper) for _ in range(L)]
     targeted_section.content = temp
 
-    return fparsed_to_bytes(fparsed)
+    return fparsed
+# fail
+def section_append(fbytes, seed=None):
+    return fparsed_to_bytes(section_append_(fbytes, seed))
 
+def elf_section_append(fbytes, seed=None):
+    return elf_fparsed_to_bytes(section_append_(fbytes, seed))
 
 def upx_pack(fbytes, seed=None):
     # tested with UPX 3.91
@@ -172,6 +201,8 @@ def upx_pack(fbytes, seed=None):
 
     return nfbytes
 
+def elf_upx_pack(fbytes, seed=None):
+    return upx_pack(fbytes, seed)
 
 def upx_unpack(fbytes, seed=None):
     # dump bytez to a temporary file
@@ -192,7 +223,7 @@ def upx_unpack(fbytes, seed=None):
 
     os.unlink(tmpfilename)
 
-    if retcode == 0:  # sucessfully unpacked
+    if retcode == 0:  # successfully unpacked
         with open(tmpfilename.replace("origin", "origin_unpacked"), 'rb') as result:
             nfbytes = result.read()
 
@@ -202,6 +233,8 @@ def upx_unpack(fbytes, seed=None):
 
     return nfbytes  # fparsed_to_bytes(fparsed)
 
+def elf_upx_unpack(fbytes, seed=None):
+    return upx_unpack(fbytes, seed)
 
 def remove_signature(fbytes, seed=None):
     random.seed(seed)
@@ -242,8 +275,7 @@ def break_optional_header_checksum(fbytes, seed=None):
     return fparsed_to_bytes(fparsed)
 
 
-# success
-def inject_random_codecave(fbytes):
+def inject_random_codecave_(fbytes):
     fparsed = lief.parse(fbytes)
     random.seed(None)
     while True:
@@ -260,12 +292,15 @@ def inject_random_codecave(fbytes):
             break
         content[i] = random.randrange(0, 256)
     tsection.content = content
-
-    return fparsed_to_bytes(fparsed)
-
-
+    return fparsed
 # success
-def section_rename(fbytes):
+def inject_random_codecave(fbytes):
+    return fparsed_to_bytes(inject_random_codecave_(fbytes))
+
+def elf_inject_random_codecave(fbytes):
+    return elf_fparsed_to_bytes(inject_random_codecave_(fbytes))
+
+def section_rename_(fbytes):
     random.seed(None)
     length = random.randrange(1, 6)
     fparsed = lief.parse(fbytes)
@@ -273,9 +308,14 @@ def section_rename(fbytes):
     # print(name)
     targeted_section = random.choice(fparsed.sections)
     targeted_section.name = name
+    return fparsed
 
-    return fparsed_to_bytes(fparsed)
+# success
+def section_rename(fbytes):
+    return fparsed_to_bytes(section_rename_(fbytes))
 
+def elf_section_rename(fbytes):
+    return elf_fparsed_to_bytes(section_rename_(fbytes))
 
 # success
 def pert_dos_stub(fbytes):
@@ -284,28 +324,26 @@ def pert_dos_stub(fbytes):
     dos_stub_info = list(fparsed.dos_stub)
     sindex, eindex = tuple(sorted(random.sample([i for i in range(len(dos_stub_info))], 2)))
 
-    # print(fparsed.dos_stub)
-
     for i in range(sindex, eindex):
         dos_stub_info[i] = random.randrange(0, 256)
 
-    # dos_stub_info[0] = 0
     fparsed.dos_stub = dos_stub_info
-
     return fparsed_to_bytes(fparsed)
 
-
-# success
-def pert_bin_name(fbytes):
+def pert_bin_name_(fbytes):
     random.seed(None)
     fparsed = lief.parse(fbytes)
     length = random.randrange(1, 8)
     name = ''.join(random.sample([chr(i) for i in range(97, 123)], length))
-    # print (name)
     fparsed.name = name
+    return fparsed
 
-    return fparsed_to_bytes(fparsed)
+# success
+def pert_bin_name(fbytes):
+    return fparsed_to_bytes(pert_bin_name_(fbytes))
 
+def elf_pert_bin_name(fbytes):
+    return elf_fparsed_to_bytes(pert_bin_name_(fbytes))
 
 # partially success
 def pert_optional_header_dllchlist(fbytes):
@@ -321,7 +359,6 @@ def pert_optional_header_dllchlist(fbytes):
               lief.PE.DLL_CHARACTERISTICS.WDM_DRIVER,
               lief.PE.DLL_CHARACTERISTICS.GUARD_CF,
               lief.PE.DLL_CHARACTERISTICS.TERMINAL_SERVER_AWARE]
-
     fparsed.optional_header.add(chlist[0])
 
     return fparsed_to_bytes(fparsed)

@@ -3,6 +3,9 @@ from _socket import timeout
 import requests
 import json
 import time
+
+import vt
+
 import perturbation as p
 import lief
 import random
@@ -12,7 +15,7 @@ import urllib3 as urllib
 apikeylist = open("vt_api_key").read().split("\n")[:-1]
 apilen = len(apikeylist)
 vt_api_invoke_count = 0
-
+vt_client = vt.Client(apikeylist[0])
 
 def send_to_sandbox(fname):
     sburl = "http://localhost:8090/tasks/create/file"
@@ -48,6 +51,9 @@ def get_cuckoo_report(fname):
         time.sleep(10)
 
     r = requests.get(rpurl + str(taskid), headers=header)
+
+    #print(r.json())
+
     return r.json()
 
 
@@ -124,49 +130,57 @@ def vt_v2_analysis(filehash, original):
 
 
 def send_v3_vt_scan(fpath, apikey, origin):
-    url = 'https://www.virustotal.com/api/v3/files'
-    headers = {'accept': 'application/json', 'x-apikey': apikey}
-    files = {'file': ('myfile.exe', open(fpath, 'rb'))}
-    try:
-        response = requests.post(url, files=files, headers=headers)
-    except Exception as e:
-        print('---catch timeout --')
-        print(e)
-        time.sleep(90)
-        origin.vt_api_count = (origin.vt_api_count + 1) % apilen
-        return send_v3_vt_scan(fpath, apikeylist[origin.vt_api_count], origin)
-    print(response.status_code)
-
-    if response.status_code == 200:
-        return response.json()["data"]["id"]
-    else:
-        time.sleep(90)
-        origin.vt_api_count = (origin.vt_api_count + 1) % apilen
-        return send_v3_vt_scan(fpath, apikeylist[origin.vt_api_count], origin)
+    # url = 'https://www.virustotal.com/api/v3/files'
+    # headers = {'accept': 'application/json', 'x-apikey': apikey}
+    # files = {'file': ('myfile.exe', open(fpath, 'rb'))}
+    # try:
+    #     response = requests.post(url, files=files, headers=headers)
+    # except Exception as e:
+    #     print('---catch timeout --')
+    #     print(e)
+    #     time.sleep(90)
+    #     origin.vt_api_count = (origin.vt_api_count + 1) % apilen
+    #     return send_v3_vt_scan(fpath, apikeylist[origin.vt_api_count], origin)
+    # print(response.status_code)
+    #
+    # if response.status_code == 200:
+    #     return response.json()["data"]["id"]
+    # else:
+    #     time.sleep(90)
+    #     origin.vt_api_count = (origin.vt_api_count + 1) % apilen
+    #     return send_v3_vt_scan(fpath, apikeylist[origin.vt_api_count], origin)
     # pass
+    with open(fpath,"rb") as f:
+        analysis = vt_client.scan_file(f)
+        return analysis.id
 
 
 def get_v3_vt_report(analysisId, apikey, origin):
-    url = 'https://www.virustotal.com/api/v3/analyses/' + analysisId
-    headers = {'accept': 'application/json', 'x-apikey': apikey}
-    try:
-        response = requests.get(url, headers=headers)
-    except Exception as e:
-        print('---catch timeout --')
-        print(e)
-        time.sleep(90)
-        origin.vt_api_count = (origin.vt_api_count + 1) % apilen
-        return get_v3_vt_report(analysisId, apikeylist[origin.vt_api_count], origin)
-
-    # status = response.json()["response_code"]
-    print(response.status_code)
-
-    if response.status_code == 200:
-        return response.json()
-    else:
-        time.sleep(90)
-        origin.vt_api_count = (origin.vt_api_count + 1) % apilen
-        return get_v3_vt_report(analysisId, apikeylist[origin.vt_api_count], origin)
+    # url = 'https://www.virustotal.com/api/v3/analyses/' + analysisId
+    # headers = {'accept': 'application/json', 'x-apikey': apikey}
+    # try:
+    #     response = requests.get(url, headers=headers)
+    # except Exception as e:
+    #     print('---catch timeout --')
+    #     print(e)
+    #     time.sleep(90)
+    #     origin.vt_api_count = (origin.vt_api_count + 1) % apilen
+    #     return get_v3_vt_report(analysisId, apikeylist[origin.vt_api_count], origin)
+    #
+    # # status = response.json()["response_code"]
+    # print(response.status_code)
+    #
+    # if response.status_code == 200:
+    #     return response.json()
+    # else:
+    #     time.sleep(90)
+    #     origin.vt_api_count = (origin.vt_api_count + 1) % apilen
+    #     return get_v3_vt_report(analysisId, apikeylist[origin.vt_api_count], origin)
+    while True:
+        report = vt_client.get_object("/analyses/{}", analysisId)
+        if report.status == "completed":
+            return report
+        time.sleep(30)
 
 
 def vt_v3_analysis(filehash, original):
@@ -284,10 +298,12 @@ def jotti_v2_analysis(scanJobId, original):
 
 
 def get_malware_analysis(scanJobId, original):
-    return jotti_v2_analysis(scanJobId, original)
+    #return jotti_v2_analysis(scanJobId, original)
+    return vt_v3_analysis(scanJobId, original)
 
 def send_malware_scan(fpath, apikey, origin):
-    return send_v2_jotti_scan(fpath, apikey, origin)
+    #return send_v2_jotti_scan(fpath, apikey, origin)
+    return send_v3_vt_scan(fpath, apikey, origin)
 
 def check_sig_set(signatures):
     sigs = []

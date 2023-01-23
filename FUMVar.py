@@ -19,6 +19,7 @@ if __name__ == "__main__":
     generation = 100
     skip = 20
     input_path = '/home/infobeyond/VirusShare/VirusShare_PE'
+    #input_path = '/home/infobeyond/VirusShare/ELF_Linux_i386_x64_86/VirusShare_66dbd9c0bc312ebc2e09cbc9ba1c1dd7'
     output_path = '/home/infobeyond/VirusShare/output1'
 
     if args.population:
@@ -39,14 +40,13 @@ if __name__ == "__main__":
 
     original = gp.origin(input_path,fbytes)
 
-    with open(output_path,"a") as wf:
+    with open(output_path, "a") as wf:
         wf.write("original file: "+input_path+"\nVT result: "+str(original.vt_result)+"\nVT detection list:"+str(original.vt_dlist)+"\n\n")
-    print ("\nOriginal file: "+ input_path)
-    print ("VirusTotal detection rate: "+ str(original.vt_result))
+    print ("\nOriginal file: " + input_path)
+    print ("VirusTotal detection rate: " + str(original.vt_result))
     print ("") 
 
     print ("* Starting GP malware generation\n")
     print ("* 1 generation\n")
     g = gp.GP(fbytes,population,perturbation,output_path,skip)
     g.generation(original,generation)
-
