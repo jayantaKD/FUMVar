@@ -18,9 +18,11 @@ if __name__ == "__main__":
     perturbation = 1
     generation = 100
     skip = 20
-    input_path = '/home/infobeyond/VirusShare/VirusShare_PE'
+    #input_path = '/home/infobeyond/VirusShare/VirusShare_PE'
     #input_path = '/home/infobeyond/VirusShare/ELF_Linux_i386_x64_86/VirusShare_66dbd9c0bc312ebc2e09cbc9ba1c1dd7'
-    output_path = '/home/infobeyond/VirusShare/output1'
+    input_path="D:\\AutoGenMalware\\Malware_Database\\VirusShare_x86-64_WinEXE_20130711\\VirusShare_00c28cee9c6874302982045b5faff846"
+    #output_path = '/home/infobeyond/VirusShare/output1'
+    output_path = "D:\\AutoGenMalware\\Malware_Database\\output"
 
     if args.population:
         population = args.population

@@ -15,7 +15,7 @@ import urllib3 as urllib
 apikeylist = open("vt_api_key").read().split("\n")[:-1]
 apilen = len(apikeylist)
 vt_api_invoke_count = 0
-vt_client = vt.Client(apikeylist[0])
+
 
 def send_to_sandbox(fname):
     sburl = "http://localhost:8090/tasks/create/file"
@@ -150,8 +150,10 @@ def send_v3_vt_scan(fpath, apikey, origin):
     #     origin.vt_api_count = (origin.vt_api_count + 1) % apilen
     #     return send_v3_vt_scan(fpath, apikeylist[origin.vt_api_count], origin)
     # pass
+    vt_client = vt.Client(apikeylist[0])
     with open(fpath,"rb") as f:
         analysis = vt_client.scan_file(f)
+        vt_client.close()
         return analysis.id
 
 
@@ -176,30 +178,21 @@ def get_v3_vt_report(analysisId, apikey, origin):
     #     time.sleep(90)
     #     origin.vt_api_count = (origin.vt_api_count + 1) % apilen
     #     return get_v3_vt_report(analysisId, apikeylist[origin.vt_api_count], origin)
+    vt_client = vt.Client(apikeylist[0])
     while True:
         report = vt_client.get_object("/analyses/{}", analysisId)
         if report.status == "completed":
-            return report
+            vt_client.close()
+            return json.dumps(report.__dict__)
         time.sleep(30)
 
 
 def vt_v3_analysis(filehash, original):
     random.seed(None)
     i = random.randrange(0, apilen)
-    # print (apikeylist[i])
-    # scan = send_vt_scan(fpath,apikeylist[i])
-    # filehash = scan["md5"]
-    while True:
-        time.sleep(30)
-        # i = (i+1)%apilen
-        original.vt_api_count = (original.vt_api_count + 1) % apilen
-        vt_report = get_v3_vt_report(filehash, apikeylist[original.vt_api_count], original)
-        print('---vt report---')
-        print(vt_report)
-        if vt_report["data"]["attributes"]["status"] == 'completed':
-            vt_result = vt_report["data"]["attributes"]["stats"]["malicious"] / (vt_report["data"]["attributes"]["stats"]["malicious"] + vt_report["data"]["attributes"]["stats"]["undetected"])
-            break
-    return vt_result, vt_report
+    vt_report = get_v3_vt_report(filehash, apikeylist[original.vt_api_count], original)
+    vt_result = vt_report["stats"]["malicious"] / (vt_report["stats"]["undetected"] + vt_report["stats"]["malicious"] + vt_report["stats"]["type-unsupported"])
+    return vt_result, vt_report["results"]
 
 
 

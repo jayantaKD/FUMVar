@@ -15,8 +15,8 @@ COMMON_SECTION_NAMES = open(os.path.join(
     module_path, 'section_names.txt'), 'r').read().rstrip().split('\n')
 COMMON_IMPORTS = json.load(
     open(os.path.join(module_path, 'small_dll_imports.json'), 'r'))
-STUB_FILE = "hello_lief.bin"
-STUB = lief.parse(os.path.join(module_path, STUB_FILE))
+STUB_FILE = ""#"hello_lief.bin"
+STUB = ""#lief.parse(os.path.join(module_path, STUB_FILE))
 
 def lastindex(bytelist):
     for i in range(len(bytelist) - 1, 0, -1):
