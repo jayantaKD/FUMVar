@@ -151,11 +151,10 @@ def send_v3_vt_scan(fpath, apikey, origin):
     #     return send_v3_vt_scan(fpath, apikeylist[origin.vt_api_count], origin)
     # pass
     vt_client = vt.Client(apikeylist[0])
-    with open(fpath,"rb") as f:
+    with open(fpath, "rb") as f:
         analysis = vt_client.scan_file(f)
         vt_client.close()
         return analysis.id
-
 
 def get_v3_vt_report(analysisId, apikey, origin):
     # url = 'https://www.virustotal.com/api/v3/analyses/' + analysisId
@@ -183,16 +182,15 @@ def get_v3_vt_report(analysisId, apikey, origin):
         report = vt_client.get_object("/analyses/{}", analysisId)
         if report.status == "completed":
             vt_client.close()
-            return json.dumps(report.__dict__)
+            return report
         time.sleep(30)
 
 
 def vt_v3_analysis(filehash, original):
     random.seed(None)
-    i = random.randrange(0, apilen)
     vt_report = get_v3_vt_report(filehash, apikeylist[original.vt_api_count], original)
-    vt_result = vt_report["stats"]["malicious"] / (vt_report["stats"]["undetected"] + vt_report["stats"]["malicious"] + vt_report["stats"]["type-unsupported"])
-    return vt_result, vt_report["results"]
+    vt_result = vt_report.stats["malicious"] / (vt_report.stats['undetected'] + vt_report.stats["malicious"])
+    return vt_result, vt_report.results
 
 
 
