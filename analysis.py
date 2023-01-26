@@ -11,11 +11,13 @@ import lief
 import random
 import subprocess
 import urllib3 as urllib
+from malconv_nn import malconv
 
 apikeylist = open("vt_api_key").read().split("\n")[:-1]
 apilen = len(apikeylist)
 vt_api_invoke_count = 0
-
+n_network = malconv('./malconv/malconv.h5')
+enable_cuckoo = False
 
 def send_to_sandbox(fname):
     sburl = "http://localhost:8090/tasks/create/file"
@@ -41,20 +43,21 @@ def status(taskid):
 
 
 def get_cuckoo_report(fname):
-    rpurl = "http://localhost:8090/tasks/report/"
-    data = {'timeout': '30'}
-    header = {"Authorization": "Bearer A1f2ICXgK8FIL8EuB1WArA"}
-
-    taskid = send_to_sandbox(fname)["task_id"]
-
-    while status(taskid)['task']['status'] != "reported":
-        time.sleep(10)
-
-    r = requests.get(rpurl + str(taskid), headers=header)
+    if enable_cuckoo:
+        rpurl = "http://localhost:8090/tasks/report/"
+        data = {'timeout': '30'}
+        header = {"Authorization": "Bearer A1f2ICXgK8FIL8EuB1WArA"}
+        taskid = send_to_sandbox(fname)["task_id"]
+        while status(taskid)['task']['status'] != "reported":
+            time.sleep(10)
+        r = requests.get(rpurl + str(taskid), headers=header)
+        signature = r.json()["signatures"]
+    else:
+        signature = []
 
     #print(r.json())
 
-    return r.json()
+    return signature
 
 
 def checkVtApiReadiness(origin):
@@ -290,11 +293,14 @@ def jotti_v2_analysis(scanJobId, original):
 
 def get_malware_analysis(scanJobId, original):
     #return jotti_v2_analysis(scanJobId, original)
-    return vt_v3_analysis(scanJobId, original)
+    #prediction = n_network.predict('/home/infobeyond/workspace/VirusShare/VirusShare_PE')
+    prediction = n_network.predict(scanJobId)
+    return prediction, []#vt_v3_analysis(scanJobId, original)
 
 def send_malware_scan(fpath, apikey, origin):
     #return send_v2_jotti_scan(fpath, apikey, origin)
-    return send_v3_vt_scan(fpath, apikey, origin)
+    test = '1234'
+    return fpath#send_v3_vt_scan(fpath, apikey, origin)
 
 def check_sig_set(signatures):
     sigs = []
@@ -312,7 +318,7 @@ def check_key_instructions():
 
 # origin = json report, target = filename
 def func_check(origin_sig, target):
-    target_sig = get_cuckoo_report(target)["signatures"]
+    target_sig = get_cuckoo_report(target)
 
     osig = check_sig_set(origin_sig)
     tsig = check_sig_set(target_sig)
@@ -320,7 +326,10 @@ def func_check(origin_sig, target):
     total = osig | tsig
     match = osig & tsig
 
-    if len(match) / len(total) > 0.6:
-        return True
+    if len(total) > 0:
+        if len(match) / len(total) > 0.6:
+            return True
+        else:
+            return False
     else:
-        return False
+        return True

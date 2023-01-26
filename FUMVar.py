@@ -4,6 +4,10 @@ from argparse import ArgumentParser
 import gp
 import analysis
 
+import logging
+logging.getLogger("Python").setLevel(logging.WARNING)
+logging.getLogger("Coding").setLevel(logging.WARNING)
+
 if __name__ == "__main__":
     parser = ArgumentParser()    
     parser.add_argument("-i", type=str, help="Path for binary input", dest="input_path", required=False)
@@ -20,9 +24,11 @@ if __name__ == "__main__":
     skip = 20
     #input_path = '/home/infobeyond/VirusShare/VirusShare_PE'
     #input_path = '/home/infobeyond/VirusShare/ELF_Linux_i386_x64_86/VirusShare_66dbd9c0bc312ebc2e09cbc9ba1c1dd7'
-    input_path="D:\\AutoGenMalware\\Malware_Database\\VirusShare_x86-64_WinEXE_20130711\\VirusShare_00c28cee9c6874302982045b5faff846"
+    #input_path="D:\\AutoGenMalware\\Malware_Database\\VirusShare_x86-64_WinEXE_20130711\\VirusShare_00c28cee9c6874302982045b5faff846"
+    input_path = '/home/infobeyond/workspace/VirusShare/codecave/VirusShare_PE'
     #output_path = '/home/infobeyond/VirusShare/output1'
-    output_path = "D:\\AutoGenMalware\\Malware_Database\\output"
+    output_path = '/home/infobeyond/workspace/VirusShare/codecave/output1'
+    #output_path = "D:\\AutoGenMalware\\Malware_Database\\output"
 
     if args.population:
         population = args.population
@@ -36,7 +42,8 @@ if __name__ == "__main__":
         input_path = args.input_path
     if args.output_path:
         output_path = args.output_path
-    
+
+
     print ("* Scanning original malware sample")
     fbytes = open(input_path,"rb").read()
 

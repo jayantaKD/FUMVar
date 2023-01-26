@@ -34,7 +34,7 @@ class origin:
         self.name = fname
         self.fbytes = fbytes
         self.vt_api_count = 0
-        self.cuckoosig = anal.get_cuckoo_report(fname)["signatures"]
+        self.cuckoosig = anal.get_cuckoo_report(fname)
         self.md5 = anal.send_malware_scan(fname, apikeylist[self.vt_api_count], self)
         self.vt_result, vt_report = anal.get_malware_analysis(self.md5, self)
         self.vt_dlist = "test"
@@ -122,7 +122,7 @@ class GP:
                 i += 1
                 continue
             # p.build_lief(pop.fbytes,original.name)
-            # p.build_lief_name(pop.fbytes, original.name, "m" + str(i))
+            p.build_lief_name(pop.fbytes, original.name, "m" + str(i))
             ####### pop.fname = original.name.replace(".exe", "_m" + str(i) + ".exe")
             pop.fname = original.name + "_m" + str(i)
             # print (pop.fname)
@@ -207,6 +207,7 @@ class GP:
                 self.population.append(new_pop)
 
     def generation(self, original, gnum):
+
         self.score(original)
         # self.score_without_vt(original)
 
@@ -242,6 +243,7 @@ class GP:
             # print ("") 
 
         for i in range(gnum):
+            time.sleep(5)
             print("* " + str(self.generationnum + 1) + " generation\n")
             with open(self.output_path, "a") as wf:
                 wf.write(str(self.generationnum + 1) + " generation\n")
