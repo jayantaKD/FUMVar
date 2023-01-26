@@ -32,7 +32,7 @@ class malconv():
             self.model = basemodel
 
             self.model.compile(loss='binary_crossentropy',
-                               optimizer=SGD(lr=0.01, momentum=0.9, nesterov=True, decay=1e-3),
+                               optimizer=SGD(learning_rate=0.01, momentum=0.9, nesterov=True, decay=1e-3),
                                metrics=[metrics.binary_accuracy])
         else:
             logging.error("Could not find malconv.h5")

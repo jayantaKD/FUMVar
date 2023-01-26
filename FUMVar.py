@@ -20,7 +20,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     population = 10
     perturbation = 1
-    generation = 100
+    generation = 30
     skip = 20
     #input_path = '/home/infobeyond/VirusShare/VirusShare_PE'
     #input_path = '/home/infobeyond/VirusShare/ELF_Linux_i386_x64_86/VirusShare_66dbd9c0bc312ebc2e09cbc9ba1c1dd7'
@@ -49,8 +49,8 @@ if __name__ == "__main__":
 
     original = gp.origin(input_path,fbytes)
 
-    with open(output_path, "a") as wf:
-        wf.write("original file: "+input_path+"\nVT result: "+str(original.vt_result)+"\nVT detection list:"+str(original.vt_dlist)+"\n\n")
+    # with open(output_path, "a") as wf:
+    #     wf.write("original file: "+input_path+"\nVT result: "+str(original.vt_result)+"\nVT detection list:"+str(original.vt_dlist)+"\n\n")
     print ("\nOriginal file: " + input_path)
     print ("VirusTotal detection rate: " + str(original.vt_result))
     print ("") 

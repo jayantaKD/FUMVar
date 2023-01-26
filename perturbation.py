@@ -359,6 +359,8 @@ def pert_optional_header_dllchlist(fbytes):
               lief.PE.DLL_CHARACTERISTICS.WDM_DRIVER,
               lief.PE.DLL_CHARACTERISTICS.GUARD_CF,
               lief.PE.DLL_CHARACTERISTICS.TERMINAL_SERVER_AWARE]
+
+    #print(fparsed)
     fparsed.optional_header.add(chlist[0])
 
     return fparsed_to_bytes(fparsed)
@@ -465,14 +467,14 @@ def build_lief(fbytes, fname):
     builder.write(new_fname)
 
 
-def build_lief_name(fbytes, fname, pertname):
-    pe = pefile.PE(fname)
+def build_lief_name(fbytes, original_fname, new_fname):
+    pe = pefile.PE(original_fname)
     fparsed = lief.parse(fbytes)
     builder = lief.PE.Builder(fparsed)
     # builder.build_imports(True)
     builder.build()
     #######new_fname = fname.replace(".exe", "_" + pertname + ".exe")
-    new_fname = fname + "_" + pertname
+    #new_fname = fname + "_" + pertname
     builder.write(new_fname)
 
     pe2 = pefile.PE(new_fname)

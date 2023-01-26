@@ -3,9 +3,7 @@ from _socket import timeout
 import requests
 import json
 import time
-
 import vt
-
 import perturbation as p
 import lief
 import random
@@ -18,6 +16,7 @@ apilen = len(apikeylist)
 vt_api_invoke_count = 0
 n_network = malconv('./malconv/malconv.h5')
 enable_cuckoo = False
+scoring_system = 'malconv' #---- vt or jotti or malconv
 
 def send_to_sandbox(fname):
     sburl = "http://localhost:8090/tasks/create/file"
@@ -26,21 +25,16 @@ def send_to_sandbox(fname):
         files = {"file": (fname, sample)}
         header = {"Authorization": "Bearer A1f2ICXgK8FIL8EuB1WArA"}
         r = requests.post(sburl, data=data, files=files, headers=header)
-
     if r.status_code == 200:
         return r.json()
-
     return False
-
 
 def status(taskid):
     spurl = "http://localhost:8090/tasks/view/"
     data = {'timeout': '30'}
     header = {"Authorization": "Bearer A1f2ICXgK8FIL8EuB1WArA"}
-
     r = requests.get(spurl + str(taskid), headers=header)
     return r.json()
-
 
 def get_cuckoo_report(fname):
     if enable_cuckoo:
@@ -54,11 +48,7 @@ def get_cuckoo_report(fname):
         signature = r.json()["signatures"]
     else:
         signature = []
-
-    #print(r.json())
-
     return signature
-
 
 def checkVtApiReadiness(origin):
     if origin.vt_api_count >= 3:
@@ -101,9 +91,6 @@ def get_v2_vt_report(hashvalue, apikey, origin):
         origin.vt_api_count = (origin.vt_api_count + 1) % apilen
         return get_v2_vt_report(hashvalue, apikeylist[origin.vt_api_count], origin)
 
-    # status = response.json()["response_code"]
-    print(response.status_code)
-
     if response.status_code == 200:
         return response.json()
     else:
@@ -115,11 +102,8 @@ def get_v2_vt_report(hashvalue, apikey, origin):
 def vt_v2_analysis(filehash, original):
     random.seed(None)
     i = random.randrange(0, apilen)
-    # print (apikeylist[i])
-    # scan = send_vt_scan(fpath,apikeylist[i])
-    # filehash = scan["md5"]
+
     while True:
-        # i = (i+1)%apilen
         original.vt_api_count = (original.vt_api_count + 1) % apilen
         vt_report = get_v2_vt_report(filehash, apikeylist[original.vt_api_count], original)
         print('---vt report---')
@@ -128,58 +112,15 @@ def vt_v2_analysis(filehash, original):
             vt_result = vt_report["positives"] / vt_report["total"]
             break
         time.sleep(10)
-
     return vt_result, vt_report
 
-
 def send_v3_vt_scan(fpath, apikey, origin):
-    # url = 'https://www.virustotal.com/api/v3/files'
-    # headers = {'accept': 'application/json', 'x-apikey': apikey}
-    # files = {'file': ('myfile.exe', open(fpath, 'rb'))}
-    # try:
-    #     response = requests.post(url, files=files, headers=headers)
-    # except Exception as e:
-    #     print('---catch timeout --')
-    #     print(e)
-    #     time.sleep(90)
-    #     origin.vt_api_count = (origin.vt_api_count + 1) % apilen
-    #     return send_v3_vt_scan(fpath, apikeylist[origin.vt_api_count], origin)
-    # print(response.status_code)
-    #
-    # if response.status_code == 200:
-    #     return response.json()["data"]["id"]
-    # else:
-    #     time.sleep(90)
-    #     origin.vt_api_count = (origin.vt_api_count + 1) % apilen
-    #     return send_v3_vt_scan(fpath, apikeylist[origin.vt_api_count], origin)
-    # pass
     vt_client = vt.Client(apikeylist[0])
     with open(fpath, "rb") as f:
         analysis = vt_client.scan_file(f)
         vt_client.close()
         return analysis.id
-
 def get_v3_vt_report(analysisId, apikey, origin):
-    # url = 'https://www.virustotal.com/api/v3/analyses/' + analysisId
-    # headers = {'accept': 'application/json', 'x-apikey': apikey}
-    # try:
-    #     response = requests.get(url, headers=headers)
-    # except Exception as e:
-    #     print('---catch timeout --')
-    #     print(e)
-    #     time.sleep(90)
-    #     origin.vt_api_count = (origin.vt_api_count + 1) % apilen
-    #     return get_v3_vt_report(analysisId, apikeylist[origin.vt_api_count], origin)
-    #
-    # # status = response.json()["response_code"]
-    # print(response.status_code)
-    #
-    # if response.status_code == 200:
-    #     return response.json()
-    # else:
-    #     time.sleep(90)
-    #     origin.vt_api_count = (origin.vt_api_count + 1) % apilen
-    #     return get_v3_vt_report(analysisId, apikeylist[origin.vt_api_count], origin)
     vt_client = vt.Client(apikeylist[0])
     while True:
         report = vt_client.get_object("/analyses/{}", analysisId)
@@ -187,14 +128,11 @@ def get_v3_vt_report(analysisId, apikey, origin):
             vt_client.close()
             return report
         time.sleep(30)
-
-
 def vt_v3_analysis(filehash, original):
     random.seed(None)
     vt_report = get_v3_vt_report(filehash, apikeylist[original.vt_api_count], original)
     vt_result = vt_report.stats["malicious"] / (vt_report.stats['undetected'] + vt_report.stats["malicious"])
     return vt_result, vt_report.results
-
 
 
 def creat_v2_jotti_scan_token( apikey, origin):
@@ -234,7 +172,6 @@ def create_v2_jotti_scan_job(fpath,scantoken, apikey, origin):
         time.sleep(30)
         origin.vt_api_count = (origin.vt_api_count + 1) % apilen
         return create_v2_jotti_scan_job(fpath, scantoken)
-    #print(response.status_code)
 
     if response.status_code == 201:
         return response.json()["fileScanJobId"]
@@ -281,26 +218,27 @@ def get_v2_jotti_report(scanJobId,apikey, origin):
         return get_v2_jotti_report(scanJobId, apikey, origin)
     # pass
 
-
 def jotti_v2_analysis(scanJobId, original):
     original.vt_api_count = (original.vt_api_count + 1) % apilen
     jotti_report = get_v2_jotti_report(scanJobId, apikeylist[original.vt_api_count], original)
-    #print('---vt report---')
-    #print(jotti_report)
     jotti_result = jotti_report["scanJob"]["scannersDetected"] / jotti_report["scanJob"]["scannersRun"]
     return jotti_result, jotti_report
 
-
 def get_malware_analysis(scanJobId, original):
-    #return jotti_v2_analysis(scanJobId, original)
-    #prediction = n_network.predict('/home/infobeyond/workspace/VirusShare/VirusShare_PE')
-    prediction = n_network.predict(scanJobId)
-    return prediction, []#vt_v3_analysis(scanJobId, original)
+    if scoring_system == 'vt':
+        return vt_v3_analysis(scanJobId, original)
+    elif scoring_system == 'jotti':
+        return jotti_v2_analysis(scanJobId, original)
+    else:
+        return n_network.predict(scanJobId), []
 
 def send_malware_scan(fpath, apikey, origin):
-    #return send_v2_jotti_scan(fpath, apikey, origin)
-    test = '1234'
-    return fpath#send_v3_vt_scan(fpath, apikey, origin)
+    if scoring_system == 'vt':
+        return send_v3_vt_scan(fpath, apikey, origin)
+    elif scoring_system == 'jotti':
+        return send_v2_jotti_scan(fpath, apikey, origin)
+    else:
+        return fpath
 
 def check_sig_set(signatures):
     sigs = []
@@ -311,10 +249,8 @@ def check_sig_set(signatures):
 
     return set(sigs)
 
-
 def check_key_instructions():
     pass
-
 
 # origin = json report, target = filename
 def func_check(origin_sig, target):
