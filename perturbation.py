@@ -168,7 +168,7 @@ def upx_pack(fbytes, seed=None):
     random.seed(seed)
     tmpfilename = os.getcwd() + "/sample/upx/origin"
     # tmpfilename = os.path.join(
-    #     tempfile._get_default_tempdir(), next(tempfile._get_candidate_names()))
+    # tempfile._get_default_tempdir(), next(tempfile._get_candidate_names()))
 
     # dump bytez to a temporary file
     with open(tmpfilename, 'wb') as outfile:

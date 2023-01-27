@@ -18,10 +18,13 @@ apilen = len(apikeylist)
 #             "pert_optional_header_dllchlist", "pert_rich_header", "pert_dos_header", "section_add", "section_append",
 #             "pert_optional_header", "pert_coff_header", "pert_data_directory"]
 
-pertlist = ["overlay_append","upx_pack","upx_unpack", "inject_random_codecave","section_rename","pert_dos_stub","pert_optional_header_dllchlist"
-            ,"pert_rich_header","pert_dos_header","section_add","pert_optional_header","pert_coff_header","pert_data_directory"]
+# pertlist = ["overlay_append","upx_pack","upx_unpack", "inject_random_codecave","section_rename","pert_dos_stub","pert_optional_header_dllchlist"
+#             ,"pert_rich_header","pert_dos_header","section_add","pert_optional_header","pert_coff_header","pert_data_directory"]
 
-elf_pertlist = ["elf_overlay_append", "elf_upx_pack", "elf_upx_unpack", "elf_inject_random_codecave", "elf_section_rename", "elf_section_add", "elf_section_append"]
+pertlist = ["overlay_append","upx_pack","upx_unpack", "inject_random_codecave","section_rename","pert_dos_stub","pert_optional_header_dllchlist"
+             ,"pert_rich_header","pert_dos_header","section_add","pert_optional_header","pert_coff_header","pert_data_directory"]
+
+# elf_pertlist = ["elf_overlay_append", "elf_upx_pack", "elf_upx_unpack", "elf_inject_random_codecave", "elf_section_rename", "elf_section_add", "elf_section_append"]
 
 one_time = ['upx_unpack', 'upx_pack', 'break_optional_header_checksum', 'remove_signature', 'remove_debug']
 
@@ -220,48 +223,21 @@ class GP:
                 self.population.append(new_pop)
 
     def generation(self, original, gnum):
-        #time.sleep(10)
         self.score(original)
         # self.score_without_vt(original)
 
-        # if self.generationnum == 1:
-        #     # with open(self.output_path, "a") as wf:
-        #     #     wf.write("1 generation\n")
-        #
-        #     # func = 0
-        #     for i in range(self.size):
-        #         # if self.population[i].functional == False:
-        #         #     func += 1
-        #         print("* Member " + str(i))
-        #         print("Malware Functionality: " + str(self.population[i].functional))
-        #         print("VirusTotal detection rate: " + str(self.population[i].vt_result))
-        #         print("Applied perturbations: " + str(self.population[i].pert))
-        #         print("Previously applied perturbations: " + str(self.population[i].prev_pert))
-        #         print("")
-        #
-        #         # with open(self.output_path, "a") as wf:
-        #         #     wf.write(
-        #         #         "VT, Functinoal, ssdeep difference, perturbation list, previous perturbation list, VT detection list: " + str(
-        #         #             self.population[i].vt_result) + ", " + str(self.population[i].functional) + ", " + str(
-        #         #             self.population[i].diff) + ", " + str(self.population[i].pert) + ", " + str(
-        #         #             self.population[i].prev_pert) + ", " + str(self.population[i].vt_dlist) + "\n")
-        #         # # print (self.population[i].score, self.population[i].vt_result, self.population[i].functional, self.population[i].diff, self.population[i].pert)
-        #     # with open(self.output_path, "a") as wf:
-        #     #     wf.write("\n")
-        #
-        #     # if func == self.size:
-        #     #     print(self.output_path, "failed")
-        #     #     return
-        #
-        #     # print ("")
+        with open(self.output_path, "a") as wf:
+            wf.write("Generation No." + ";" + "Population No." + ";" + "Functional" + ";"
+                     + "Ssdeep Score" + ";" + "VT Score" + ";"
+                     + "Fitness Score" + ";" + "Perturbation" + " \n")
+
+        with open(self.output_path, "a") as wf:
+            wf.write(str(original.name) + ";" + "0" + ";" + "0" + ";" + "True" + ";" + "0" + ";" + str(original.vt_result) + ";"
+                     + "0" + ";" + "" + " \n")
 
         for i in range(gnum):
-            #time.sleep(10)
-            self.generationnum = i
+            self.generationnum = i+1
             print("* " + str(self.generationnum) + " generation\n")
-            # with open(self.output_path, "a") as wf:
-            #     wf.write(str(self.generationnum + 1) + " generation\n")
-            # print (self.generationnum, "generation")
             for k in range(self.size):
                 print("* Member " + str(k))
                 print("Malware Functionality: " + str(self.population[k].functional))
@@ -269,17 +245,13 @@ class GP:
                 print("Applied perturbations: " + str(self.population[k].pert))
                 print("Previously applied perturbations: " + str(self.population[k].prev_pert))
                 print("")
-                # with open(self.output_path, "a") as wf:
-                #     wf.write(
-                #         "VT, Functional, ssdeep difference, perturbation list, previous perturbation list, VT detection list: " + str(
-                #             self.population[i].vt_result) + ", " + str(self.population[i].functional) + ", " + str(
-                #             self.population[i].diff) + ", " + str(self.population[i].pert) + ", " + str(
-                #             self.population[i].prev_pert) + ", " + str(self.population[i].vt_dlist) + "\n")
 
-                # print (self.population[i].score, self.population[i].vt_result, self.population[i].functional,self.population[i].diff, self.population[i].pert)
-            # with open(self.output_path, "a") as wf:
-            #     wf.write("\n* takes " + str(end_time) + "\n\n")
-            # print ("")
+                with open(self.output_path, "a") as wf:
+                    wf.write(str(original.name) + ";" + str(self.generationnum) + ";" + str(k) + ";" + str(self.population[k].functional) + ";"
+                             + str(self.population[k].diff) + ";" + str(self.population[k].vt_result) + ";"
+                             + str(self.population[k].score) + ";" + str(self.population[k].prev_pert) + "," +
+                             str(self.population[k].pert) + " \n")
+
             start_time = time.time()
             self.mutate(0.3)
             self.selection(original)
