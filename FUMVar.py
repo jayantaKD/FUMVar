@@ -5,55 +5,25 @@ import gp
 import analysis as anal
 
 import logging
-logging.getLogger("Python").setLevel(logging.WARNING)
-logging.getLogger("Coding").setLevel(logging.WARNING)
+# logging.getLogger("Python").setLevel(logging.WARNING)
+# logging.getLogger("Coding").setLevel(logging.WARNING)
 
 if __name__ == "__main__":
-    parser = ArgumentParser()    
-    parser.add_argument("-i", type=str, help="Path for binary input", dest="input_path", required=False)
-    parser.add_argument("-o", type=str, help="Path for result", dest="output_path", required=False)
-    parser.add_argument("-p", type=int, help="Number of population (default=4)", dest="population")
-    parser.add_argument("-m", type=int, help="Number of perturbation per generation (default=4)", dest="perturbation")
-    parser.add_argument("-g", type=int, help="Number of generation (default=100)", dest="generation")
-    parser.add_argument("-s", type=int, help="Number of skip time for VirusTotal scan generation (default=5)", dest="skip")
-    
-    args = parser.parse_args()
-    population = 10
-    perturbation = 1
-    generation = 100
     skip = 20
-    #input_path = '/home/infobeyond/VirusShare/VirusShare_PE'
-    #input_path = '/home/infobeyond/VirusShare/ELF_Linux_i386_x64_86/VirusShare_66dbd9c0bc312ebc2e09cbc9ba1c1dd7'
-    #input_path="D:\\AutoGenMalware\\Malware_Database\\VirusShare_x86-64_WinEXE_20130711\\VirusShare_00c28cee9c6874302982045b5faff846"
-    input_path = '/home/infobeyond/workspace/VirusShare/AKMVG/VirusShare_PE'
-    #output_path = '/home/infobeyond/VirusShare/output1'
+    perturbation = 1
+
+
     output_path = '/home/infobeyond/workspace/VirusShare/AKMVG/output1'
-    #output_path = "D:\\AutoGenMalware\\Malware_Database\\output"
 
-    # if args.population:
-    #     population = args.population
-    # if args.perturbation:
-    #     perturbation = args.perturbation
-    # if args.generation:
-    #     generation = args.generation
-    # if args.skip:
-    #     skip = args.skip
-    # if args.input_path:
-    #     input_path = args.input_path
-    # if args.output_path:
-    #     output_path = args.output_path
-
-    #input_directory = '/home/infobeyond/workspace/VirusShare/AKMVG/malwares'
+    input_directory = '/home/infobeyond/workspace/VirusShare/AKMVG/malwares'
     #input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_20130711'
     #input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_High_DR'
-    input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_Low_DR'
-    generationList = [50, 100, 150, 200, 250, 300]
-    populationList = [10, 50, 100]
+    #input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_Low_DR'
+    #generationList = [50, 100, 150, 200, 250, 300]
+    #populationList = [10, 50, 100]
 
-    #generationList = [50, 100]
-    #populationList = [50, 100]
-
-
+    generationList = [10, 15, 20, 25, 30]
+    populationList = [2, 5, 10, 15, 20]
 
     with open(output_path, "a") as wf:
         wf.write("Original_File_Name" + ";"
@@ -89,3 +59,4 @@ if __name__ == "__main__":
                 print("* 1 generation\n")
                 g = gp.GP(fbytes, population, perturbation, output_path, skip)
                 g.generation(original, generation)
+                print('-----------------------------------------------------------------------------------------------')

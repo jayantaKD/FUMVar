@@ -18,10 +18,13 @@ apilen = len(apikeylist)
 #             "pert_optional_header_dllchlist", "pert_rich_header", "pert_dos_header", "section_add", "section_append",
 #             "pert_optional_header", "pert_coff_header", "pert_data_directory"]
 
-pertlist = ["overlay_append","upx_pack","upx_unpack", "inject_random_codecave","section_rename","pert_dos_stub","pert_optional_header_dllchlist"
-            ,"pert_rich_header","pert_dos_header","section_add","pert_optional_header","pert_coff_header","pert_data_directory"]
+# pertlist = ["overlay_append","upx_pack","upx_unpack", "inject_random_codecave","section_rename","pert_dos_stub","pert_optional_header_dllchlist"
+#             ,"pert_rich_header","pert_dos_header","section_add","pert_optional_header","pert_coff_header","pert_data_directory"]
 
-elf_pertlist = ["elf_overlay_append", "elf_upx_pack", "elf_upx_unpack", "elf_inject_random_codecave", "elf_section_rename", "elf_section_add", "elf_section_append"]
+pertlist = ["overlay_append","upx_pack","upx_unpack", "inject_random_codecave","section_rename","pert_dos_stub","pert_optional_header_dllchlist"
+             ,"pert_rich_header","pert_dos_header","section_add","pert_optional_header","pert_coff_header","pert_data_directory"]
+
+# elf_pertlist = ["elf_overlay_append", "elf_upx_pack", "elf_upx_unpack", "elf_inject_random_codecave", "elf_section_rename", "elf_section_add", "elf_section_append"]
 
 one_time = ['upx_unpack', 'upx_pack', 'break_optional_header_checksum', 'remove_signature', 'remove_debug']
 
@@ -199,15 +202,29 @@ class GP:
                 self.population.append(new_pop)
 
     def generation(self, original, gnum):
+# <<<<<<< HEAD
         #time.sleep(10)
         start_time = time.time()
         self.score(original, 0)
         end_time = time.time() - start_time
         # self.score_without_vt(original)
 
+# =======
+#         self.score(original)
+#         # self.score_without_vt(original)
+#
+#         with open(self.output_path, "a") as wf:
+#             wf.write("Generation No." + ";" + "Population No." + ";" + "Functional" + ";"
+#                      + "Ssdeep Score" + ";" + "VT Score" + ";"
+#                      + "Fitness Score" + ";" + "Perturbation" + " \n")
+#
+#         with open(self.output_path, "a") as wf:
+#             wf.write(str(original.name) + ";" + "0" + ";" + "0" + ";" + "True" + ";" + "0" + ";" + str(original.vt_result) + ";"
+#                      + "0" + ";" + "" + " \n")
+#
+# >>>>>>> da57ed97fbc38927db8cb735be93b5b13349233d
         for i in range(gnum):
-            #time.sleep(10)
-            self.generationnum = i
+            self.generationnum = i+1
             print("* " + str(self.generationnum) + " generation\n")
             for k in range(self.size):
                 print("* Member " + str(k))
@@ -216,6 +233,7 @@ class GP:
                 print("Applied perturbations: " + str(self.population[k].pert))
                 print("Previously applied perturbations: " + str(self.population[k].prev_pert))
                 print("")
+#<<<<<<< HEAD
                 ## write on the file
                 with open(self.output_path, "a") as wf:
                     wf.write(str(original.nameWithoutPath) + ";"
@@ -232,6 +250,15 @@ class GP:
                              + str(self.population[k].score) + ";"
                              + str(self.population[k].prev_pert) + ","
                              + str(self.population[k].pert) + " \n")
+# =======
+#
+#                 with open(self.output_path, "a") as wf:
+#                     wf.write(str(original.name) + ";" + str(self.generationnum) + ";" + str(k) + ";" + str(self.population[k].functional) + ";"
+#                              + str(self.population[k].diff) + ";" + str(self.population[k].vt_result) + ";"
+#                              + str(self.population[k].score) + ";" + str(self.population[k].prev_pert) + "," +
+#                              str(self.population[k].pert) + " \n")
+#
+# >>>>>>> da57ed97fbc38927db8cb735be93b5b13349233d
             start_time = time.time()
             self.mutate(0.3)
             self.selection(original, self.generationnum)
