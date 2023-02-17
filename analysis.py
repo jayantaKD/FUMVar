@@ -1,14 +1,7 @@
-from _socket import timeout
-
 import requests
-import json
 import time
 import vt
-import perturbation as p
-import lief
 import random
-import subprocess
-import urllib3 as urllib
 from malconv_nn import malconv
 
 apikeylist = open("vt_api_key").read().split("\n")[:-1]
@@ -16,7 +9,7 @@ apilen = len(apikeylist)
 vt_api_invoke_count = 0
 n_network = malconv('./malconv/malconv.h5')
 enable_cuckoo = False
-scoring_system = 'malconv' #---- vt or jotti or malconv
+scoring_system = 'malonv' #---- vt or jotti or malconv
 
 def send_to_sandbox(fname):
     sburl = "http://localhost:8090/tasks/create/file"
@@ -55,7 +48,6 @@ def checkVtApiReadiness(origin):
         time.sleep(60)
         origin.vt_api_count = 0
 
-
 def send_v2_vt_scan(fpath, apikey, origin):
     url = 'https://www.virustotal.com/vtapi/v2/file/scan'
     params = {'apikey': apikey}
@@ -78,7 +70,6 @@ def send_v2_vt_scan(fpath, apikey, origin):
         return send_v2_vt_scan(fpath, apikeylist[origin.vt_api_count], origin)
     # pass
 
-
 def get_v2_vt_report(hashvalue, apikey, origin):
     url = 'https://www.virustotal.com/vtapi/v2/file/report'
     params = {'apikey': apikey, 'resource': hashvalue}
@@ -97,7 +88,6 @@ def get_v2_vt_report(hashvalue, apikey, origin):
         time.sleep(90)
         origin.vt_api_count = (origin.vt_api_count + 1) % apilen
         return get_v2_vt_report(hashvalue, apikeylist[origin.vt_api_count], origin)
-
 
 def vt_v2_analysis(filehash, original):
     random.seed(None)
@@ -133,7 +123,6 @@ def vt_v3_analysis(filehash, original):
     vt_report = get_v3_vt_report(filehash, apikeylist[original.vt_api_count], original)
     vt_result = vt_report.stats["malicious"] / (vt_report.stats['undetected'] + vt_report.stats["malicious"])
     return vt_result, vt_report.results
-
 
 def creat_v2_jotti_scan_token( apikey, origin):
     url = 'https://virusscan.jotti.org/api/filescanjob/v2/createscantoken'
@@ -206,7 +195,6 @@ def get_v2_jotti_report(scanJobId,apikey, origin):
         time.sleep(30)
         origin.vt_api_count = (origin.vt_api_count + 1) % apilen
         return get_v2_jotti_report(scanJobId, apikey, origin)
-    #print(response.status_code)
 
     if response.status_code == 200:
         if response.json()['scanJob']['finishedOn'] == None:# Scan result is not ready

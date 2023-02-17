@@ -2,7 +2,7 @@ import sys
 import os
 from argparse import ArgumentParser
 import gp
-import analysis
+import analysis as anal
 
 import logging
 logging.getLogger("Python").setLevel(logging.WARNING)
@@ -20,42 +20,72 @@ if __name__ == "__main__":
     args = parser.parse_args()
     population = 10
     perturbation = 1
-    generation = 30
+    generation = 100
     skip = 20
     #input_path = '/home/infobeyond/VirusShare/VirusShare_PE'
     #input_path = '/home/infobeyond/VirusShare/ELF_Linux_i386_x64_86/VirusShare_66dbd9c0bc312ebc2e09cbc9ba1c1dd7'
     #input_path="D:\\AutoGenMalware\\Malware_Database\\VirusShare_x86-64_WinEXE_20130711\\VirusShare_00c28cee9c6874302982045b5faff846"
-    input_path = '/home/infobeyond/workspace/VirusShare/codecave/VirusShare_PE'
+    input_path = '/home/infobeyond/workspace/VirusShare/AKMVG/VirusShare_PE'
     #output_path = '/home/infobeyond/VirusShare/output1'
-    output_path = '/home/infobeyond/workspace/VirusShare/codecave/output1'
+    output_path = '/home/infobeyond/workspace/VirusShare/AKMVG/output1'
     #output_path = "D:\\AutoGenMalware\\Malware_Database\\output"
 
-    if args.population:
-        population = args.population
-    if args.perturbation:
-        perturbation = args.perturbation
-    if args.generation:
-        generation = args.generation
-    if args.skip:
-        skip = args.skip
-    if args.input_path:
-        input_path = args.input_path
-    if args.output_path:
-        output_path = args.output_path
+    # if args.population:
+    #     population = args.population
+    # if args.perturbation:
+    #     perturbation = args.perturbation
+    # if args.generation:
+    #     generation = args.generation
+    # if args.skip:
+    #     skip = args.skip
+    # if args.input_path:
+    #     input_path = args.input_path
+    # if args.output_path:
+    #     output_path = args.output_path
+
+    #input_directory = '/home/infobeyond/workspace/VirusShare/AKMVG/malwares'
+    #input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_20130711'
+    #input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_High_DR'
+    input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_Low_DR'
+    generationList = [50, 100, 150, 200, 250, 300]
+    populationList = [10, 50, 100]
+
+    #generationList = [50, 100]
+    #populationList = [50, 100]
 
 
-    print ("* Scanning original malware sample")
-    fbytes = open(input_path,"rb").read()
 
-    original = gp.origin(input_path,fbytes)
+    with open(output_path, "a") as wf:
+        wf.write("Original_File_Name" + ";"
+                 + "Variant_File_Name" + ";"
+                 + "Scanner" + ";"
+                 + "Total_Gen" + ";"
+                 + "Total_Population" + ";"
+                 + "Generation_No." + ";"
+                 + "Population_No." + ";"
+                 + "Delay" + ";"
+                 + "Functional" + ";"
+                 + "Ssdeep Score" + ";"
+                 + "VT Score" + ";"
+                 + "Fitness Score" + ";"
+                 + "Perturbation" + " \n")
 
-    # with open(output_path, "a") as wf:
-    #     wf.write("original file: "+input_path+"\nVT result: "+str(original.vt_result)+"\nVT detection list:"+str(original.vt_dlist)+"\n\n")
-    print ("\nOriginal file: " + input_path)
-    print ("VirusTotal detection rate: " + str(original.vt_result))
-    print ("") 
+    # Multiple malware in the directory
+    for filename in os.listdir(input_directory):
+        # Varying number of total generations
+        for generation in generationList:
+            # Varying number of initial population list
+            for population in populationList:
+                input_path = os.path.join(input_directory, filename)
+                print("* Scanning original malware sample")
+                fbytes = open(input_path, "rb").read()
+                original = gp.origin(input_path, fbytes, generation, filename,'malonv')
 
-    print ("* Starting GP malware generation\n")
-    print ("* 1 generation\n")
-    g = gp.GP(fbytes,population,perturbation,output_path,skip)
-    g.generation(original,generation)
+                print("\nOriginal file: " + input_path)
+                print("VirusTotal detection rate: " + str(original.vt_result))
+                print("")
+
+                print("* Starting GP malware generation\n")
+                print("* 1 generation\n")
+                g = gp.GP(fbytes, population, perturbation, output_path, skip)
+                g.generation(original, generation)

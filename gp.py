@@ -33,7 +33,7 @@ def difference(fbytes1, fbytes2):
 
 
 class origin:
-    def __init__(self, fname, fbytes):
+    def __init__(self, fname, fbytes, gnum, name, scanner):
         self.name = fname
         self.fbytes = fbytes
         self.vt_api_count = 0
@@ -41,6 +41,9 @@ class origin:
         self.md5 = anal.send_malware_scan(fname, apikeylist[self.vt_api_count], self)
         self.vt_result, vt_report = anal.get_malware_analysis(self.md5, self)
         self.vt_dlist = "test"
+        self.generation_number = gnum
+        self.nameWithoutPath = name
+        self.scoring_system = scanner #'malonv' #---- vt or jotti or malconv
         #self.vt_dlist = [data for data in vt_report["data"]["results"].keys() if vt_report["data"]["results"][data]["category"] == 'malicious']
         # print (self.vt_dlist)
 
@@ -61,6 +64,7 @@ class Chromosome:
         self.prev_pert = []
         self.fname = None
         self.md5 = None
+        self.nameWithoutPath = None
 
 
     def perturb(self, chosen_pert, initial=False):
@@ -119,70 +123,45 @@ class GP:
 
         self.generationnum = 1
 
-    def score(self, original):
+    def score(self, original,generation_no):
         i = 1
         chosen_idx = random.randrange(apilen)
+
+        ## save executables in disk
         for pop in self.population:
             if pop.vt_result != None:
                 i += 1
                 continue
-            # p.build_lief(pop.fbytes,original.name)
-            p.build_lief_name(pop.fbytes, original.name, (original.name + "_m" + str(i)))
-            ####### pop.fname = original.name.replace(".exe", "_m" + str(i) + ".exe")
-            pop.fname = original.name + "_m" + str(i)
-            # print (pop.fname)
+
+            variantFileNameWithoutPath = "_g" + str(generation_no) + "_p" + str(i)
+            variantFileName = original.name + variantFileNameWithoutPath
+            p.build_lief_name(pop.fbytes, original.name, variantFileName)
+            pop.fname = variantFileName
+            pop.nameWithoutPath = variantFileNameWithoutPath
             pop.diff = difference(original.fbytes, pop.fbytes)
             pop.md5 = anal.send_malware_scan(pop.fname, apikeylist[(chosen_idx + i) % apilen], original)
             i += 1
 
-        ck = 0
+        ## obtain cuckoo signatures running saved binary files on cuckoo server
         for pop in self.population:
             if pop.functional != None:
                 continue
-
-            # for pop2 in self.population:
-            #     if pop2 in self.population:
-            #         if pop2.fname == pop.fname:
-            #             continue
-            #         if pop2.fbytes == pop.fbytes and pop2.functional != None:
-            #             pop.functional = pop2.functional
-            #             ck = 1
-            # if ck == 1:
-            #     ck = 0
-            #     continue
-
             pop.functional = anal.func_check(original.cuckoosig, pop.fname)
-            ########with open(self.output_path.replace(".txt", "_suc_rate.txt"), "a") as wf:
-            # with open(self.output_path + "_suc_rate", "a") as wf:
-            #     wf.write("prev_perturbation, perturbation, functionality: " + str(pop.prev_pert) + ", " + str(
-            #         pop.pert) + ", " + str(pop.functional) + "\n")
 
-        ck = 0
+        ## obtain detection score running saved binary on malware scanners
         for pop in self.population:
             if pop.vt_result != None:
                 continue
-
-            # for pop2 in self.population:
-            #     if pop2 in self.population:
-            #         if pop2.fname == pop.fname:
-            #             continue
-            #         if pop2.fbytes == pop.fbytes and pop2.vt_result != None:
-            #             pop.vt_result = pop2.vt_result
-            #             ck = 1
-            # if ck == 1:
-            #     ck = 0
-            #     continue
-
             pop.vt_result, vt_report = anal.get_malware_analysis(pop.md5, original)
-            #pop.vt_dlist = [data for data in vt_report["scans"].keys() if vt_report["scans"][data]["detected"] == True]
-            #pop.vt_dlist = [data for data in vt_report["data"]["results"].keys() ifvt_report["data"]["results"][data]["category"] == 'malicious']
-
             pop.scoring()
+            os.remove(pop.fname)
+
         self.population = sorted(self.population, key=lambda pop: pop.score, reverse=True)
 
-    def selection(self, original):
-        self.score(original)
+    def selection(self, original, generation_no):
+        self.score(original, generation_no)
         self.population = self.population[:self.size]
+        ## obtain detection score running saved binary on malware scanners
 
     def mutate(self, prob):
         populationlist = list(self.population)
@@ -221,47 +200,15 @@ class GP:
 
     def generation(self, original, gnum):
         #time.sleep(10)
-        self.score(original)
+        start_time = time.time()
+        self.score(original, 0)
+        end_time = time.time() - start_time
         # self.score_without_vt(original)
-
-        # if self.generationnum == 1:
-        #     # with open(self.output_path, "a") as wf:
-        #     #     wf.write("1 generation\n")
-        #
-        #     # func = 0
-        #     for i in range(self.size):
-        #         # if self.population[i].functional == False:
-        #         #     func += 1
-        #         print("* Member " + str(i))
-        #         print("Malware Functionality: " + str(self.population[i].functional))
-        #         print("VirusTotal detection rate: " + str(self.population[i].vt_result))
-        #         print("Applied perturbations: " + str(self.population[i].pert))
-        #         print("Previously applied perturbations: " + str(self.population[i].prev_pert))
-        #         print("")
-        #
-        #         # with open(self.output_path, "a") as wf:
-        #         #     wf.write(
-        #         #         "VT, Functinoal, ssdeep difference, perturbation list, previous perturbation list, VT detection list: " + str(
-        #         #             self.population[i].vt_result) + ", " + str(self.population[i].functional) + ", " + str(
-        #         #             self.population[i].diff) + ", " + str(self.population[i].pert) + ", " + str(
-        #         #             self.population[i].prev_pert) + ", " + str(self.population[i].vt_dlist) + "\n")
-        #         # # print (self.population[i].score, self.population[i].vt_result, self.population[i].functional, self.population[i].diff, self.population[i].pert)
-        #     # with open(self.output_path, "a") as wf:
-        #     #     wf.write("\n")
-        #
-        #     # if func == self.size:
-        #     #     print(self.output_path, "failed")
-        #     #     return
-        #
-        #     # print ("")
 
         for i in range(gnum):
             #time.sleep(10)
             self.generationnum = i
             print("* " + str(self.generationnum) + " generation\n")
-            # with open(self.output_path, "a") as wf:
-            #     wf.write(str(self.generationnum + 1) + " generation\n")
-            # print (self.generationnum, "generation")
             for k in range(self.size):
                 print("* Member " + str(k))
                 print("Malware Functionality: " + str(self.population[k].functional))
@@ -269,19 +216,23 @@ class GP:
                 print("Applied perturbations: " + str(self.population[k].pert))
                 print("Previously applied perturbations: " + str(self.population[k].prev_pert))
                 print("")
-                # with open(self.output_path, "a") as wf:
-                #     wf.write(
-                #         "VT, Functional, ssdeep difference, perturbation list, previous perturbation list, VT detection list: " + str(
-                #             self.population[i].vt_result) + ", " + str(self.population[i].functional) + ", " + str(
-                #             self.population[i].diff) + ", " + str(self.population[i].pert) + ", " + str(
-                #             self.population[i].prev_pert) + ", " + str(self.population[i].vt_dlist) + "\n")
-
-                # print (self.population[i].score, self.population[i].vt_result, self.population[i].functional,self.population[i].diff, self.population[i].pert)
-            # with open(self.output_path, "a") as wf:
-            #     wf.write("\n* takes " + str(end_time) + "\n\n")
-            # print ("")
+                ## write on the file
+                with open(self.output_path, "a") as wf:
+                    wf.write(str(original.nameWithoutPath) + ";"
+                             + str(self.population[k].nameWithoutPath) + ";"
+                    + 'malconv' + ";"
+                             + str(gnum) + ";"
+                             + str(self.size) + ";"
+                             + str(self.generationnum) + ";"
+                             + str(k) + ";"
+                             + str(end_time) + ";"
+                             + str(self.population[k].functional) + ";"
+                             + str(self.population[k].diff) + ";"
+                             + str(self.population[k].vt_result) + ";"
+                             + str(self.population[k].score) + ";"
+                             + str(self.population[k].prev_pert) + ","
+                             + str(self.population[k].pert) + " \n")
             start_time = time.time()
             self.mutate(0.3)
-            self.selection(original)
+            self.selection(original, self.generationnum)
             end_time = time.time() - start_time
-
