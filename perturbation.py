@@ -9,6 +9,7 @@ import tempfile
 import subprocess
 import signal
 import pefile
+# from numba import jit, cuda
 
 module_path = os.path.split(os.path.abspath(sys.modules[__name__].__file__))[0]
 COMMON_SECTION_NAMES = open(os.path.join(
@@ -17,6 +18,7 @@ COMMON_IMPORTS = json.load(
     open(os.path.join(module_path, 'small_dll_imports.json'), 'r'))
 STUB_FILE = ""#"hello_lief.bin"
 STUB = ""#lief.parse(os.path.join(module_path, STUB_FILE))
+lief.logging.disable()
 
 def lastindex(bytelist):
     for i in range(len(bytelist) - 1, 0, -1):
@@ -480,6 +482,7 @@ def build_lief_name(fbytes, original_fname, new_fname):
     pe2 = pefile.PE(new_fname)
 
     if pe.OPTIONAL_HEADER.SizeOfHeaders != pe2.OPTIONAL_HEADER.SizeOfHeaders:
+        print('---------------------------------------------------------------------------------------------------------------------------------------------')
         pe2.OPTIONAL_HEADER.SizeOfHeaders = pe.OPTIONAL_HEADER.SizeOfHeaders
 
     pe2.write(new_fname)

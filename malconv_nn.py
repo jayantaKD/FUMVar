@@ -58,3 +58,26 @@ class malconv():
             bytez = np.frombuffer(bytes_[:self.maxlen], dtype=np.uint8)
             b[:len(bytez)] = bytez
         return b
+
+
+    def predict_bytes(self, binary):
+        return self.predict_bytes_aux(binary)[0][0]
+
+    def predict_bytes_aux(self, binary):
+        X = self.another_generator_bytes(binary)
+        prediction = self.model.predict_generator(X, 1)
+        return prediction
+
+    def another_generator_bytes(self, binary):
+        X = []
+        x = self.bytez_to_numpy_bytes(binary)
+        X.append(x)
+        yield np.asarray(X, dtype=np.uint16)
+
+    def bytez_to_numpy_bytes(self, binary):
+        # with open(binary, "rb") as f:
+        bytes_ = binary #f.read()
+        b = np.ones((self.maxlen,), dtype=np.uint16) * self.padding_char
+        bytez = np.frombuffer(bytes_[:self.maxlen], dtype=np.uint8)
+        b[:len(bytez)] = bytez
+        return b

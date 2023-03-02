@@ -1,3 +1,5 @@
+import io
+
 import requests
 import time
 import vt
@@ -11,13 +13,13 @@ n_network = malconv('./malconv/malconv.h5')
 enable_cuckoo = False
 scoring_system = 'malonv' #---- vt or jotti or malconv
 
-def send_to_sandbox(fname):
+def send_to_sandbox(fbytes):
     sburl = "http://localhost:8090/tasks/create/file"
     data = {'timeout': '30'}
-    with open(fname, 'rb') as sample:
-        files = {"file": (fname, sample)}
-        header = {"Authorization": "Bearer A1f2ICXgK8FIL8EuB1WArA"}
-        r = requests.post(sburl, data=data, files=files, headers=header)
+    # with open(fname, 'rb') as sample:
+    files = {"file": ('cuckoo-analysis', io.BytesIO(fbytes))}
+    header = {"Authorization": "Bearer A1f2ICXgK8FIL8EuB1WArA"}
+    r = requests.post(sburl, data=data, files=files, headers=header)
     if r.status_code == 200:
         return r.json()
     return False
@@ -29,12 +31,12 @@ def status(taskid):
     r = requests.get(spurl + str(taskid), headers=header)
     return r.json()
 
-def get_cuckoo_report(fname):
+def get_cuckoo_report(fbytes):
     if enable_cuckoo:
         rpurl = "http://localhost:8090/tasks/report/"
         data = {'timeout': '30'}
         header = {"Authorization": "Bearer A1f2ICXgK8FIL8EuB1WArA"}
-        taskid = send_to_sandbox(fname)["task_id"]
+        taskid = send_to_sandbox(fbytes)["task_id"]
         while status(taskid)['task']['status'] != "reported":
             time.sleep(10)
         r = requests.get(rpurl + str(taskid), headers=header)
@@ -104,12 +106,13 @@ def vt_v2_analysis(filehash, original):
         time.sleep(10)
     return vt_result, vt_report
 
-def send_v3_vt_scan(fpath, apikey, origin):
+def send_v3_vt_scan(fbytes, apikey, origin):
     vt_client = vt.Client(apikeylist[0])
-    with open(fpath, "rb") as f:
-        analysis = vt_client.scan_file(f)
-        vt_client.close()
-        return analysis.id
+    f = io.BytesIO(fbytes)
+    # with open(fpath, "rb") as f:
+    analysis = vt_client.scan_file(f)
+    vt_client.close()
+    return analysis.id
 def get_v3_vt_report(analysisId, apikey, origin):
     vt_client = vt.Client(apikeylist[0])
     while True:
@@ -146,11 +149,11 @@ def creat_v2_jotti_scan_token( apikey, origin):
         return creat_v2_jotti_scan_token()
     # pass
 
-def create_v2_jotti_scan_job(fpath,scantoken, apikey, origin):
+def create_v2_jotti_scan_job(fbytes,scantoken, apikey, origin):
     url = 'https://virusscan.jotti.org/api/filescanjob/v2/createjob'
     headers = {'accept': '*/*',
                'Authorization': 'Key nA5BxHYJU77V16Yy'}
-    files = {'file': ('myfile.exe', open(fpath, 'rb'), 'application/octet-stream')}
+    files = {'file': ('myfile.exe', io.BytesIO(fbytes), 'application/octet-stream')}
     form_data = {'scanToken': scantoken}
 
     try:
@@ -160,23 +163,23 @@ def create_v2_jotti_scan_job(fpath,scantoken, apikey, origin):
         print(e)
         time.sleep(30)
         origin.vt_api_count = (origin.vt_api_count + 1) % apilen
-        return create_v2_jotti_scan_job(fpath, scantoken)
+        return create_v2_jotti_scan_job(fbytes, scantoken)
 
     if response.status_code == 201:
         return response.json()["fileScanJobId"]
     else:
         time.sleep(30)
         origin.vt_api_count = (origin.vt_api_count + 1) % apilen
-        return create_v2_jotti_scan_job(fpath, scantoken)
+        return create_v2_jotti_scan_job(fbytes, scantoken)
     # pass
 
-def send_v2_jotti_scan(fpath, apikey, origin):
+def send_v2_jotti_scan(fbytes, apikey, origin):
     if origin.vt_api_count >= 100:
         time.sleep(300)
     else:
         time.sleep(2)
     scanToken = creat_v2_jotti_scan_token(apikey, origin)
-    scanJobId = create_v2_jotti_scan_job(fpath, scanToken,apikey, origin)
+    scanJobId = create_v2_jotti_scan_job(fbytes, scanToken,apikey, origin)
     return scanJobId
 
 def get_v2_jotti_report(scanJobId,apikey, origin):
@@ -212,21 +215,21 @@ def jotti_v2_analysis(scanJobId, original):
     jotti_result = jotti_report["scanJob"]["scannersDetected"] / jotti_report["scanJob"]["scannersRun"]
     return jotti_result, jotti_report
 
-def get_malware_analysis(scanJobId, original):
+def get_malware_analysis(scanJobId, original, fbytes=b""):
     if scoring_system == 'vt':
         return vt_v3_analysis(scanJobId, original)
     elif scoring_system == 'jotti':
         return jotti_v2_analysis(scanJobId, original)
     else:
-        return n_network.predict(scanJobId), []
+        return n_network.predict_bytes(fbytes), []
 
-def send_malware_scan(fpath, apikey, origin):
+def send_malware_scan(fbytes, apikey, origin):
     if scoring_system == 'vt':
-        return send_v3_vt_scan(fpath, apikey, origin)
+        return send_v3_vt_scan(fbytes, apikey, origin)
     elif scoring_system == 'jotti':
-        return send_v2_jotti_scan(fpath, apikey, origin)
+        return send_v2_jotti_scan(fbytes, apikey, origin)
     else:
-        return fpath
+        return ''
 
 def check_sig_set(signatures):
     sigs = []
@@ -241,8 +244,8 @@ def check_key_instructions():
     pass
 
 # origin = json report, target = filename
-def func_check(origin_sig, target):
-    target_sig = get_cuckoo_report(target)
+def func_check(origin_sig, target_bytes):
+    target_sig = get_cuckoo_report(target_bytes)
 
     osig = check_sig_set(origin_sig)
     tsig = check_sig_set(target_sig)
