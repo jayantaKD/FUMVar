@@ -23,7 +23,7 @@ apilen = len(apikeylist)
 #             ,"pert_rich_header","pert_dos_header","section_add","pert_optional_header","pert_coff_header","pert_data_directory"]
 
 pertlist = ["overlay_append", "upx_pack", "upx_unpack", "inject_random_codecave", "section_rename", "pert_dos_stub",
-            "pert_optional_header_dllchlist", "pert_rich_header", "pert_dos_header", "section_add",
+            "pert_rich_header", "pert_dos_header", "section_add",
             "pert_optional_header", "pert_coff_header", "pert_data_directory"]
 
 # elf_pertlist = ["elf_overlay_append", "elf_upx_pack", "elf_upx_unpack", "elf_inject_random_codecave", "elf_section_rename", "elf_section_add", "elf_section_append"]
@@ -44,7 +44,7 @@ class origin:
         self.vt_api_count = 0
         self.cuckoosig = anal.get_cuckoo_report(fname)
         self.md5 = anal.send_malware_scan(fname, apikeylist[self.vt_api_count], self)
-        self.vt_result, vt_report = anal.get_malware_analysis(self.md5, self)
+        self.vt_result, vt_report = anal.get_malware_analysis(self.md5, self,fbytes)
         self.vt_dlist = "test"
         self.generation_number = gnum
         self.nameWithoutPath = name
@@ -245,13 +245,15 @@ class GP:
 
         for i in range(gnum):
             self.generationnum = i+1
-            print("* " + str(self.generationnum) + " generation\n")
+            print("* " + str(self.generationnum) + " generation: 5 best populations\n")
             for k in range(self.size):
-                print("* Member " + str(k))
-                print("Malware Functionality: " + str(self.population[k].functional))
-                print("VirusTotal detection rate: " + str(self.population[k].vt_result))
-                print("Applied perturbations: " + str(self.population[k].pert))
-                print("Previously applied perturbations: " + str(self.population[k].prev_pert))
+                print("Generation - " + str(self.generationnum) + ", Population - " + str(k+1))
+                print("Fitness Score (FS): " + str(round(self.population[k].score, 2)))
+                print("Malconv Detection Rate (DR): " + str(round(self.population[k].vt_result * 100, 2)))
+                print("SSDEEP Score (SS): " + str(self.population[k].diff))
+                print("Malware Functionality Preserved (Cuckoo Analysis): " + str(self.population[k].functional))
+                print("Applied Perturbations: " + str(self.population[k].pert) + str(self.population[k].prev_pert))
+                # print("Previously applied perturbations: " + str(self.population[k].prev_pert))
                 print("")
                 ## write on the file
                 with open(self.output_path, "a") as wf:
