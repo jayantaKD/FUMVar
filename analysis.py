@@ -10,14 +10,14 @@ apikeylist = open("vt_api_key").read().split("\n")[:-1]
 apilen = len(apikeylist)
 vt_api_invoke_count = 0
 n_network = malconv('./malconv/malconv.h5')
-enable_cuckoo = False
+enable_cuckoo = True
 scoring_system = 'malonv' #---- vt or jotti or malconv
 
 def send_to_sandbox(fbytes):
     sburl = "http://localhost:8090/tasks/create/file"
     data = {'timeout': '30'}
     # with open(fname, 'rb') as sample:
-    files = {"file": ('cuckoo-analysis', io.BytesIO(fbytes))}
+    files = {"file": ('cuckoo-analysis', fbytes)}
     header = {"Authorization": "Bearer A1f2ICXgK8FIL8EuB1WArA"}
     r = requests.post(sburl, data=data, files=files, headers=header)
     if r.status_code == 200:
@@ -247,8 +247,14 @@ def check_key_instructions():
 def func_check(origin_sig, target_bytes):
     target_sig = get_cuckoo_report(target_bytes)
 
+    # print(target_sig)
+    # print(origin_sig)
+
     osig = check_sig_set(origin_sig)
     tsig = check_sig_set(target_sig)
+
+    print(osig)
+    print(tsig)
 
     total = osig | tsig
     match = osig & tsig

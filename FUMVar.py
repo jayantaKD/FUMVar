@@ -13,11 +13,11 @@ if __name__ == "__main__":
     perturbation = 1
 
 
-    # output_path = '/home/infobeyond/workspace/VirusShare/AKMVG/output1'
-    # input_directory = '/home/infobeyond/workspace/VirusShare/AKMVG/malwares'
+    output_path = '/home/infobeyond/workspace/VirusShare/AKMVG/output1'
+    input_directory = '/home/infobeyond/workspace/VirusShare/AKMVG/malwares'
 
-    input_directory = '/home/vboxuser/database/AKMVG/malwares/'
-    output_path = '/home/vboxuser/database/AKMVG/output1'
+    # input_directory = '/home/vboxuser/database/AKMVG/malwares/'
+    # output_path = '/home/vboxuser/database/AKMVG/output1'
 
     #input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_20130711'
     #input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_High_DR'
@@ -72,7 +72,7 @@ if __name__ == "__main__":
              'VirusShare_73555509028ef8d62f50b1a57ad3c809',
              'VirusShare_1e34b50b8af8dbeb750c291981428053']
 
-    files = ['VirusShare_ae6af24501520d8e9e069cf6e85fb87a']
+    files = ['VirusShare_PE']
 
     # files = ['VirusShare_55da827a2e1e53de9a99a5a7be8e6e80',
     #     'VirusShare_09d49c997fa5df14cbefd9b745e04acf',
