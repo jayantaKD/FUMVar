@@ -12,7 +12,7 @@ class multiProcess:
             #     print(pop.fname + ' done - ' + str(i))
             time.sleep(5)
             # for i in range(1000000):
-            #     print('twst' + str(i))
+            # print('twst' + str(i))
             return
 
     def task(self):
@@ -40,12 +40,12 @@ class multiProcess:
 
             # t1 = multiprocessing.Process(target=self.test_function, args=(child_conn, pops[0]))
             # t2 = multiprocessing.Process(target=self.test_function, args=(child_conn1, pops[1]))
-        # start_time = time.time()
-        # t1.start()
-        # t2.start()
-        #
-        # t1.join()
-        # t2.join()
+            # start_time = time.time()
+            # t1.start()
+            # t2.start()
+            #
+            # t1.join()
+            # t2.join()
 
         for i in range(50):
             #procs[i].join()
@@ -72,7 +72,7 @@ class multiProcess:
         # end_time = time.time() - start_time
         # print(end_time)
 
-#print(pop2.fname)
+# print(pop2.fname)
 # t2.start()
 
 t = multiProcess()

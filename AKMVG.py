@@ -15,16 +15,25 @@ def AKMVG():
     perturbation = 1
     output_path = '/home/infobeyond/workspace/VirusShare/AKMVG/output1'
     input_directory = '/home/infobeyond/workspace/VirusShare/AKMVG/malwares'
-    # input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_20130711'
-    # input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_High_DR'
-    # input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_Low_DR'
-    # generationList = [50, 100, 150, 200, 250, 300]
-    # populationList = [10, 50, 100]
 
-    generationList = [50]
+    # input_directory = '/home/vboxuser/database/AKMVG/malwares/'
+    # output_path = '/home/vboxuser/database/AKMVG/output1'
+
+    #input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_20130711'
+    #input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_High_DR'
+    #input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_Low_DR'
+    #generationList = [50, 100, 150, 200, 250, 300]
+    #populationList = [10, 50, 100]
+
+    generationList = [10]
     # generationList = [10, 15, 20, 25, 30]
+
     # populationList = [2, 5, 10, 15, 20]
     populationList = [50]
+
+    #populationList = [2, 5, 10, 15, 20]
+    populationList = [5]
+
 
     with open(output_path, "a") as wf:
         wf.write("Original_File_Name" + ";"
@@ -68,14 +77,7 @@ def AKMVG():
              'VirusShare_73555509028ef8d62f50b1a57ad3c809',
              'VirusShare_1e34b50b8af8dbeb750c291981428053']
 
-    # files = ['VirusShare_7926a3a1708da681d54dd1a6ea45be37', 'VirusShare_55da827a2e1e53de9a99a5a7be8e6e80']
 
-    # files = ['VirusShare_55da827a2e1e53de9a99a5a7be8e6e80',
-    #     'VirusShare_09d49c997fa5df14cbefd9b745e04acf',
-    #     'VirusShare_e2c82a0891c23d5afc86cfd6115e6b7c',
-    #     'VirusShare_d3367aef91417ee4991ed7680c0ca5df',
-    #     'VirusShare_73555509028ef8d62f50b1a57ad3c809',
-    #     'VirusShare_1e34b50b8af8dbeb750c291981428053']
 
     # Multiple malware in the directory
     for filename in files:
@@ -84,16 +86,20 @@ def AKMVG():
             # Varying number of initial population list
             for population in populationList:
                 input_path = os.path.join(input_directory, filename)
-                print("* Scanning original malware sample")
+                # print("* Scanning original malware sample")
                 fbytes = open(input_path, "rb").read()
+                print(fbytes)
                 original = gp.origin(input_path, fbytes, generation, filename, 'malonv')
 
-                print("\nOriginal file: " + input_path)
-                print("VirusTotal detection rate: " + str(original.vt_result))
-                print("")
+                # print("\nOriginal file: " + input_path)
+                # print("VirusTotal detection rate: " + str(original.vt_result))
+                # print("")
 
-                print("* Starting GP malware generation\n")
-                print("* 1 generation\n")
+                print("\nOriginal Malware File: " + filename)
+                print("Malconv detection rate (%): " + str(round(original.vt_result*100, 2)))
+
+                print("\nStarting AKMVG Algorithm (Total Gen: 5, Populations per Gen: 5)\n")
+                # print("* 1 generation\n")
                 g = gp.GP(fbytes, population, perturbation, output_path, skip)
                 g.generation(original, generation)
                 print('-----------------------------------------------------------------------------------------------')
