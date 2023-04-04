@@ -5,26 +5,25 @@ import gp
 import analysis as anal
 
 import logging
-# logging.getLogger("Python").setLevel(logging.WARNING)
-# logging.getLogger("Coding").setLevel(logging.WARNING)
+from malconv_nn import malconv
+import shutil
 
-if __name__ == "__main__":
+
+
+def AKMVG():
     skip = 20
     perturbation = 1
-
-
     output_path = '/home/infobeyond/workspace/VirusShare/AKMVG/output1'
-
     input_directory = '/home/infobeyond/workspace/VirusShare/AKMVG/malwares'
-    #input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_20130711'
-    #input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_High_DR'
-    #input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_Low_DR'
-    #generationList = [50, 100, 150, 200, 250, 300]
-    #populationList = [10, 50, 100]
+    # input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_20130711'
+    # input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_High_DR'
+    # input_directory = '/home/infobeyond/workspace/VirusShare/VirusShare_x86-64_WinEXE_Low_DR'
+    # generationList = [50, 100, 150, 200, 250, 300]
+    # populationList = [10, 50, 100]
 
     generationList = [50]
     # generationList = [10, 15, 20, 25, 30]
-    #populationList = [2, 5, 10, 15, 20]
+    # populationList = [2, 5, 10, 15, 20]
     populationList = [50]
 
     with open(output_path, "a") as wf:
@@ -69,7 +68,7 @@ if __name__ == "__main__":
              'VirusShare_73555509028ef8d62f50b1a57ad3c809',
              'VirusShare_1e34b50b8af8dbeb750c291981428053']
 
-    #files = ['VirusShare_7926a3a1708da681d54dd1a6ea45be37', 'VirusShare_55da827a2e1e53de9a99a5a7be8e6e80']
+    # files = ['VirusShare_7926a3a1708da681d54dd1a6ea45be37', 'VirusShare_55da827a2e1e53de9a99a5a7be8e6e80']
 
     # files = ['VirusShare_55da827a2e1e53de9a99a5a7be8e6e80',
     #     'VirusShare_09d49c997fa5df14cbefd9b745e04acf',
@@ -98,3 +97,47 @@ if __name__ == "__main__":
                 g = gp.GP(fbytes, population, perturbation, output_path, skip)
                 g.generation(original, generation)
                 print('-----------------------------------------------------------------------------------------------')
+    pass
+
+def PEmalwareCollection():
+    inputDirectory = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/MalwareBazar_batch_02_PE/'
+    # inputDirectory = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/'
+    outputDirectory = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/peMalwares/'
+    n_network = malconv('./malconv/malconv.h5')
+    files = os.listdir(inputDirectory)
+    i = 0
+    for f in files:
+        i = i + 1
+        print(f"Processing file {i}/{len(files)} ({(i / len(files)) * 100} %)")
+        binary = inputDirectory + f
+        prediction = n_network.predict(binary)
+
+        if prediction > .98:
+            print(str(binary) + '---->' + str(prediction))
+            shutil.copy(inputDirectory + f.strip(), outputDirectory + f.strip())
+            os.remove(inputDirectory + f.strip())
+
+        # if f.endswith('incremental_original'):
+        #     print(str(f))
+        #     os.remove(binary)
+    pass
+
+def ELFmalwareCollection():
+    inputDirectory = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/MalwareBazar_batch_01_PE/'
+    pass
+
+def list_malware_names(sourceDirectory='/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/peMalwares/',
+                       outputFile='/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/peMalwaresList'):
+    files = os.listdir(sourceDirectory)
+    with open(outputFile, "a") as wf:
+        i = 0
+        for f in files:
+            i = i + 1
+            print(f"Processing file {i}/{len(files)} ({(i / len(files)) * 100} %)")
+            wf.write(str(f.strip()) + "\n")
+            pass
+
+if __name__ == "__main__":
+    logging.getLogger().disabled = True
+    # PEmalwareCollection()
+    list_malware_names()
