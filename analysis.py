@@ -113,7 +113,16 @@ def send_v3_vt_scan(fbytes, apikey, origin):
     analysis = vt_client.scan_file(f)
     vt_client.close()
     return analysis.id
-def get_v3_vt_report(analysisId, apikey, origin):
+
+def send_v3_vt_scan_file(fpath):
+
+    vt_client = vt.Client(apikeylist[0])
+    # f = io.BytesIO(fbytes)
+    with open(fpath, "rb") as f:
+        analysis = vt_client.scan_file(f)
+        vt_client.close()
+    return analysis.id
+def get_v3_vt_report(analysisId):
     vt_client = vt.Client(apikeylist[0])
     while True:
         report = vt_client.get_object("/analyses/{}", analysisId)
@@ -123,7 +132,7 @@ def get_v3_vt_report(analysisId, apikey, origin):
         time.sleep(30)
 def vt_v3_analysis(filehash, original):
     random.seed(None)
-    vt_report = get_v3_vt_report(filehash, apikeylist[original.vt_api_count], original)
+    vt_report = get_v3_vt_report(filehash)
     vt_result = vt_report.stats["malicious"] / (vt_report.stats['undetected'] + vt_report.stats["malicious"])
     return vt_result, vt_report.results
 
