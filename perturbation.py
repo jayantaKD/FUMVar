@@ -3,13 +3,9 @@ import random
 import sys
 import os
 import json
-import struct
 import array
-import tempfile
 import subprocess
-import signal
 import pefile
-# from numba import jit, cuda
 
 module_path = os.path.split(os.path.abspath(sys.modules[__name__].__file__))[0]
 COMMON_SECTION_NAMES = open(os.path.join(
@@ -26,13 +22,11 @@ def lastindex(bytelist):
             return i + 1
     return -1
 
-
 def fparsed_to_bytes(fparsed, im=False):
     builder = lief.PE.Builder(fparsed)
     if im:
         builder.build_imports(True)
         builder.patch_imports(True)
-    # builder.build_overlay(True)
     builder.build()
     return array.array('B', builder.get_build()).tobytes()
 
@@ -41,7 +35,6 @@ def elf_fparsed_to_bytes(fparsed, im=False):
     if im:
         builder.build_imports(True)
         builder.patch_imports(True)
-    # builder.build_overlay(True)
     builder.build()
     return array.array('B', builder.get_build()).tobytes()
 

@@ -2,6 +2,9 @@ import sys
 import os
 import time
 from argparse import ArgumentParser
+
+import lief
+
 import gp
 import analysis as anal
 
@@ -10,7 +13,7 @@ from malconv_nn import malconv
 import shutil
 import vt
 import perturbation as p
-
+import subprocess
 
 
 def AKMVG():
@@ -211,6 +214,55 @@ def list_malware_names(sourceDirectory='/media/infobeyond/New Volume/AutoGenMalw
             wf.write(str(f.strip()) + "\n")
             pass
 
+def checkElfFormat():
+    # sourceDirectory = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/elfMalwares/'
+    sourceDirectory = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/VirusShare_ELF_20200405/'
+
+    files = os.listdir(sourceDirectory)
+
+    i=0
+    for f in files:
+        i = i + 1
+        isELF = lief.is_elf(sourceDirectory + f.strip())
+
+        if isELF:
+            fbytes = open(str(sourceDirectory) + f, "rb").read()
+            liefParsed = lief.parse(fbytes)
+
+            try:
+                if str(liefParsed.header.file_type) != 'E_TYPE.EXECUTABLE':
+                    print(f"Processing file {i}/{len(files)} ({(i / len(files)) * 100} %):" + str(f))
+                    # print('ELF Type: ' + str(liefParsed.header.file_type))
+                    # print('Section Header Table Address: 0x' + str(liefParsed.header.section_header_offset))
+                    # print('Section Header Table Size: ' + str(liefParsed.header.section_header_size) + ' bytes')
+                    # print('Program Header Table Address: 0x' + str(liefParsed.header.program_header_offset))
+                    # print('Program Header Table Size: ' + str(liefParsed.header.program_header_size) + ' bytes')
+
+                    print(
+                        '-------------------------------------------------------------------------------------------------------')
+            except:
+                pass
+        else:
+            print('Not a ELF file!!!!!')
+
+    pass
+
+def transferOverSCP():
+    sourceDirectory = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/peMalwares/'
+    scpDest = "infobeyond@192.168.1.93:~/workspace/VirusShare/peMalwares/"
+    # dest = '/media/infobeyond/Jay/peMalwares/'
+
+    files = os.listdir(sourceDirectory)
+
+    i = 1
+    for f in files:
+        print(f"Processing file {i}/{len(files)} ({(i / len(files)) * 100} %):" + str(f))
+        # shutil.copy(sourceDirectory+f.strip(), dest+f.strip())
+        p = subprocess.Popen(["sshpass", "-p", "Inf0Bey0nd!",
+                              "scp", sourceDirectory + f.strip(), scpDest + f.strip()])
+        os.waitpid(p.pid, 0)
+        i = i + 1
+
 if __name__ == "__main__":
     logging.getLogger().disabled = True
     # PEmalwareCollection()
@@ -237,7 +289,35 @@ if __name__ == "__main__":
     #
     # vt_client.close()
 
-    input_path = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/elfMalwares/VirusShare_000a86a05b6208c3053ead8d1193b863'
-    fbytes = open(input_path, "rb").read()
-    print(fbytes)
-    # p.elf_overlay_append()
+    # input_path = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/elfMalwares/VirusShare_000a86a05b6208c3053ead8d1193b863'
+    # fbytes = open(input_path, "rb").read()
+    # # print(fbytes)
+    #
+    # testperse = lief.parse(fbytes)
+    # print(len(testperse.segments))
+    #
+    # for seg in testperse.segments:
+    #     print(seg)
+    #
+    # print('-----------------------------------------------------------------------------------------------------------')
+    # modBytes = p.elf_overlay_append(fbytes)
+    # # print(modBytes)
+    # new_fparsed = lief.parse(modBytes)
+    #
+    #
+    #
+    # for s in new_fparsed.sections:
+    #     print(s)
+    #
+    # builder = lief.ELF.Builder(new_fparsed)
+    # builder.build()
+    # ####new_fname = fname.replace(".exe", "_m.exe")
+    # new_fname = "/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/perturbedElf"
+    # builder.write(new_fname)
+
+    # checkElfFormat()
+
+    # transferOverSCP()
+
+
+

@@ -6,12 +6,16 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import time
 import random
 import lief
 import vt
 import numpy as np
 
+module_path = os.path.split(os.path.abspath(sys.modules[__name__].__file__))[0]
+COMMON_IMPORTS = json.load(
+    open(os.path.join(module_path, 'small_dll_imports.json'), 'r'))
 
 def print_hi(name):
     # Use a breakpoint in the code line below to debug your script.
@@ -341,24 +345,17 @@ def pert_upx_unpack(fbytes, seed=None):
         retcode = subprocess.call(['upx-ucl'] + [tmpfilename, '-d', '-o',
                                                  tmpfilename.replace("origin_packed", "origin_unpacked")],
                                   stdout=DEVNULL, stderr=DEVNULL)
-
     os.unlink(tmpfilename)
-
     if retcode == 0:  # successfully packed
         with open(tmpfilename.replace("origin", "origin_packed"), 'rb') as infile:
             nfbytes = infile.read()
-
         os.unlink(tmpfilename.replace("origin", "origin_packed"))
-
-    # fparsed = lief.parse(nfbytes)
-
     return nfbytes
 
 
 def upx_print():
     filename1 = "D:\\AutoGenMalware\\Malware_Database\\packed\\VirusShare_1e34b50b8af8dbeb750c291981428053"
     filename2 = "D:\\AutoGenMalware\\Malware_Database\\packed\\origin_packed"
-
     filename2 = "D:\\AutoGenMalware\\Malware_Database\\packed\\origin_unpacked"
     filename1 = "D:\\AutoGenMalware\\Malware_Database\\packed\\origin_packed"
     fbytes = open(filename1, "rb").read()
@@ -372,15 +369,169 @@ def upx_print():
     for section in fparsed.sections:
         print(section)
 
+def ELF_overlay_append(fbytes, seed=None):
+    random.seed(seed)
+    l = 2 ** random.randint(5, 8)
+    upper = random.randrange(128)
+    new_fbytes = fbytes + bytes([random.randint(0, upper) for _ in range(l)])
+    new_fparsed = lief.parse(new_fbytes)
+    return new_fparsed
+
+def imports_append(fbytes, seed=None):
+    random.seed(seed)
+    fparsed = lief.parse(fbytes)
+    libname = random.choice(list(COMMON_IMPORTS.keys()))
+    funcname = random.choice(list(COMMON_IMPORTS[libname]))
+    lowerlibname = libname.lower()
+
+    # printing libraries before perturbation
+    i = 1
+    for im in fparsed.imports:
+        # print(im.name)
+        e_list=[]
+        for e in im.entries:
+            e_list.append(e.name)
+        print('Imported library', str(i) + ':', im.name, e_list)
+        i = i + 1
+
+    lib = None
+    for im in fparsed.imports:
+        if im.name.lower() == lowerlibname:
+            lib = im
+            break
+    if lib is None:
+        lib = fparsed.add_library(libname)
+
+    names = set([e.name for e in lib.entries])
+    if not funcname in names:
+        lib.add_entry(funcname)
+
+    # printing libraries before perturbation
+    print('-------------')
+    i = 1
+    for im in fparsed.imports:
+        e_list = []
+        for e in im.entries:
+            e_list.append(e.name)
+        print('Imported library', str(i) + ':', im.name, e_list)
+        i = i + 1
+
+
+    return fparsed
+
+def pert_DLL_characteristics(fbytes):
+    fparsed = lief.parse(fbytes)
+    print(fparsed.optional_header.dll_characteristics_lists)
+    chlist = [lief.PE.DLL_CHARACTERISTICS.HIGH_ENTROPY_VA,
+              lief.PE.DLL_CHARACTERISTICS.DYNAMIC_BASE,
+              lief.PE.DLL_CHARACTERISTICS.FORCE_INTEGRITY,
+              lief.PE.DLL_CHARACTERISTICS.NX_COMPAT,
+              lief.PE.DLL_CHARACTERISTICS.NO_ISOLATION,
+              lief.PE.DLL_CHARACTERISTICS.NO_SEH,
+              lief.PE.DLL_CHARACTERISTICS.NO_BIND,
+              lief.PE.DLL_CHARACTERISTICS.APPCONTAINER,
+              lief.PE.DLL_CHARACTERISTICS.WDM_DRIVER,
+              lief.PE.DLL_CHARACTERISTICS.GUARD_CF,
+              lief.PE.DLL_CHARACTERISTICS.TERMINAL_SERVER_AWARE]
+    filteredChList = []
+    for ch in chlist:
+        if ch not in fparsed.optional_header.dll_characteristics_lists:
+            filteredChList.append(ch)
+
+    index = random.randint(0, len(filteredChList)-1)
+    if index >= 0:
+    # //dll_characteristics_lists
+         fparsed.optional_header.add(chlist[index])
+
+    print(fparsed.optional_header.dll_characteristics_lists)
+
+    return fparsed
+
+
+def pert_test():
+    peFolder = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/peMalwares/'
+    elfFolder = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/elfMalwares/'
+    filename = "/home/infobeyond/workspace/VirusShare/VirusShare_PE"
+    # filename = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/elfMalwares/VirusShare_000a86a05b6208c3053ead8d1193b863'
+
+    files = os.listdir(peFolder)
+    i = 0
+    for f in files:
+        print(f"Processing file {i}/{len(files)} ({(i / len(files)) * 100} %):" + str(f))
+        filename = peFolder + f
+        if lief.is_pe(filename):
+            fbytes = open(filename, "rb").read()
+            liefparsed = lief.parse(fbytes)
+            print(liefparsed.libraries)
+            # print(len(liefparsed.optional_header.dll_characteristics_lists))
+            if len(liefparsed.optional_header.dll_characteristics_lists) > 0:
+                # print(liefparsed.optional_header.dll_characteristics_lists)
+                # print(liefparsed.optional_header)
+                pert_DLL_characteristics(fbytes)
+            # if(len(liefparsed.imports) == 2):
+            #     print(len(liefparsed.imports))
+            #     print(list(liefparsed.imports))
+            #     for im in liefparsed.imports:
+            #         # print(im.name)
+            #         print(len(im.entries))
+            #         for entry in im.entries:
+            #             print(entry.name)
+            #         print('---')
+
+            # imports_append(fbytes)
+            break
+            print('---------------------------------------------------------')
+            i = i + 1
+            pass
+
+    files = os.listdir(elfFolder)
+    i = 0
+    for f in files:
+        print(f"Processing file {i}/{len(files)} ({(i / len(files)) * 100} %):" + str(f))
+        filename = elfFolder + f
+        if lief.is_elf(filename):
+            fbytes = open(filename, "rb").read()
+            # pert_inject_random_codecave(fbytes)
+            # upx_print()
+            # pert_rich_header(fbytes)
+            liefparsed = lief.parse(fbytes)
+            print(liefparsed.libraries)
+            # print(testperse.concrete)
+            print('---------------------------------------------------------')
+
+def collect_ELF_Shared_Library():
+    libDict = {}
+    path = '/home/infobeyond/workspace/VirusShare/liblist'
+    with open(path) as files:
+        for f in files:
+            if f.startswith('/'):
+                if lief.is_elf(f.strip()):
+                    print(f.strip())
+                    libName = f.strip().split('/')[len(f.strip().split('/')) - 1]
+                    print(libName)
+                    filename = f.strip()
+                    fbytes = open(filename, "rb").read()
+                    liefparsed = lief.parse(fbytes)
+                    funcList = []
+                    for func in liefparsed.exported_functions:
+                        funcList.append(func.name)
+                        # print(func.name)
+                    # print(funcList)
+                    libDict[libName] = funcList
+                    # break
+    print(libDict)
+    with open(os.path.join(module_path, 'elf_dll_imports.json'), 'w') as fp:
+        json.dump(libDict, fp)
 
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    filename = "D:\\AutoGenMalware\\Malware_Database\\VirusShare\\Original_PE_Malware1"
+    # pert_test()
+    # jsonStr = json.dumps(myDict)
+    # print(jsonStr)
+    pass
 
-    if lief.is_pe(filename):
-        fbytes = open(filename, "rb").read()
-        # pert_inject_random_codecave(fbytes)
-        # upx_print()
-        pert_rich_header(fbytes)
+
+
+
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
