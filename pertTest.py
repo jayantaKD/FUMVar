@@ -377,6 +377,7 @@ def ELF_overlay_append(fbytes, seed=None):
     new_fparsed = lief.parse(new_fbytes)
     return new_fparsed
 
+# new PE perturbation - 1
 def imports_append(fbytes, seed=None):
     random.seed(seed)
     fparsed = lief.parse(fbytes)
@@ -419,6 +420,7 @@ def imports_append(fbytes, seed=None):
 
     return fparsed
 
+# new PE perturbation - 2
 def pert_DLL_characteristics(fbytes):
     fparsed = lief.parse(fbytes)
     print(fparsed.optional_header.dll_characteristics_lists)
@@ -444,9 +446,7 @@ def pert_DLL_characteristics(fbytes):
          fparsed.optional_header.add(chlist[index])
 
     print(fparsed.optional_header.dll_characteristics_lists)
-
     return fparsed
-
 
 def pert_test():
     peFolder = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/peMalwares/'
@@ -454,50 +454,70 @@ def pert_test():
     filename = "/home/infobeyond/workspace/VirusShare/VirusShare_PE"
     # filename = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/elfMalwares/VirusShare_000a86a05b6208c3053ead8d1193b863'
 
-    files = os.listdir(peFolder)
-    i = 0
-    for f in files:
-        print(f"Processing file {i}/{len(files)} ({(i / len(files)) * 100} %):" + str(f))
-        filename = peFolder + f
-        if lief.is_pe(filename):
-            fbytes = open(filename, "rb").read()
-            liefparsed = lief.parse(fbytes)
-            print(liefparsed.libraries)
-            # print(len(liefparsed.optional_header.dll_characteristics_lists))
-            if len(liefparsed.optional_header.dll_characteristics_lists) > 0:
-                # print(liefparsed.optional_header.dll_characteristics_lists)
-                # print(liefparsed.optional_header)
-                pert_DLL_characteristics(fbytes)
-            # if(len(liefparsed.imports) == 2):
-            #     print(len(liefparsed.imports))
-            #     print(list(liefparsed.imports))
-            #     for im in liefparsed.imports:
-            #         # print(im.name)
-            #         print(len(im.entries))
-            #         for entry in im.entries:
-            #             print(entry.name)
-            #         print('---')
-
-            # imports_append(fbytes)
-            break
-            print('---------------------------------------------------------')
-            i = i + 1
-            pass
+    # files = os.listdir(peFolder)
+    # i = 0
+    # for f in files:
+    #     print(f"Processing file {i}/{len(files)} ({(i / len(files)) * 100} %):" + str(f))
+    #     filename = peFolder + f
+    #     if lief.is_pe(filename):
+    #         fbytes = open(filename, "rb").read()
+    #         liefparsed = lief.parse(fbytes)
+    #         print(liefparsed.libraries)
+    #         # print(len(liefparsed.optional_header.dll_characteristics_lists))
+    #         if len(liefparsed.optional_header.dll_characteristics_lists) > 0:
+    #             # print(liefparsed.optional_header.dll_characteristics_lists)
+    #             # print(liefparsed.optional_header)
+    #             pert_DLL_characteristics(fbytes)
+    #         # if(len(liefparsed.imports) == 2):
+    #         #     print(len(liefparsed.imports))
+    #         #     print(list(liefparsed.imports))
+    #         #     for im in liefparsed.imports:
+    #         #         # print(im.name)
+    #         #         print(len(im.entries))
+    #         #         for entry in im.entries:
+    #         #             print(entry.name)
+    #         #         print('---')
+    #
+    #         # imports_append(fbytes)
+    #         break
+    #         print('---------------------------------------------------------')
+    #         i = i + 1
+    #         pass
 
     files = os.listdir(elfFolder)
     i = 0
     for f in files:
         print(f"Processing file {i}/{len(files)} ({(i / len(files)) * 100} %):" + str(f))
         filename = elfFolder + f
+        print(filename)
         if lief.is_elf(filename):
             fbytes = open(filename, "rb").read()
             # pert_inject_random_codecave(fbytes)
             # upx_print()
             # pert_rich_header(fbytes)
             liefparsed = lief.parse(fbytes)
+
+            print(liefparsed.imported_functions)
             print(liefparsed.libraries)
-            # print(testperse.concrete)
-            print('---------------------------------------------------------')
+
+            liefparsed.add_library('libcaca.so.0')
+            liefparsed.add_exported_function()
+
+            print('-----------')
+
+            # for func in liefparsed.imported_functions:
+            #     print(func.name)
+            #     print(func.address)
+            #
+            # if len(liefparsed.libraries) > 0:
+            #     print(liefparsed.libraries)
+            #     print('---------------------------------------------------------')
+            print(liefparsed.imported_functions)
+            print(liefparsed.libraries)
+
+
+            break
+            i = i + 1
 
 def collect_ELF_Shared_Library():
     libDict = {}
@@ -528,10 +548,8 @@ if __name__ == '__main__':
     # pert_test()
     # jsonStr = json.dumps(myDict)
     # print(jsonStr)
+    pert_test()
     pass
-
-
-
 
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
