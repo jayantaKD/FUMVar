@@ -12,10 +12,17 @@ import random
 import lief
 import vt
 import numpy as np
+import array
+import r2pipe
+import perturbation as p
+import analysis as a
 
 module_path = os.path.split(os.path.abspath(sys.modules[__name__].__file__))[0]
 COMMON_IMPORTS = json.load(
     open(os.path.join(module_path, 'small_dll_imports.json'), 'r'))
+
+ELF_COMMON_IMPORTS = json.load(
+    open(os.path.join(module_path, 'elf_dll_imports.json'), 'r'))
 
 def print_hi(name):
     # Use a breakpoint in the code line below to debug your script.
@@ -442,15 +449,211 @@ def pert_DLL_characteristics(fbytes):
 
     index = random.randint(0, len(filteredChList)-1)
     if index >= 0:
-    # //dll_characteristics_lists
          fparsed.optional_header.add(chlist[index])
 
     print(fparsed.optional_header.dll_characteristics_lists)
     return fparsed
 
+
+
+def elf_imports_append(fbytes, seed=None):
+    random.seed(seed)
+    fparsed = lief.parse(fbytes)
+    # funcname = random.choice(list(ELF_COMMON_IMPORTS[libname]))
+    # libname = random.choice(list(ELF_COMMON_IMPORTS.keys()))
+
+    while True:
+        libname = random.choice(list(ELF_COMMON_IMPORTS.keys()))
+        if libname not in fparsed.libraries:
+            fparsed.add_library(libname)
+            break
+    return fparsed
+
+def elf_program_header_table(fbytes, seed=None):
+    random.seed(seed)
+    liefparsed = lief.parse(fbytes)
+
+    # do not perturb if not executable
+    if str(liefparsed.header.file_type) == 'E_TYPE.EXECUTABLE':
+        return fbytes
+
+    builder = lief.ELF.Builder(liefparsed)
+    builder.build()
+    builder.write('/home/infobeyond/workspace/VirusShare/testElf/phtpert')
+
+    PHT_Offset = liefparsed.header.program_header_offset
+    pert_PHT_SN = random.randrange(0, liefparsed.header.numberof_segments)
+    print(liefparsed.get_content_from_virtual_address(PHT_Offset,
+                                                      liefparsed.header.numberof_segments * liefparsed.header.program_header_size))
+    pertAddress = liefparsed.offset_to_virtual_address(PHT_Offset + (pert_PHT_SN * liefparsed.header.program_header_size))
+
+    r2n = r2pipe.open('/home/infobeyond/workspace/VirusShare/testElf/phtpert', ['-2', '-n','-w'])
+    for x in range(liefparsed.header.program_header_size):
+        # leave p_offset(4-byte), p_vaddr(4-byte), and p_paddr(4-byte) unmodified
+        if x >=4 and x<=16:
+            continue
+        # insert random codes
+        r2n.cmd("s " + str(liefparsed.offset_to_virtual_address(pertAddress+x)))
+        data = str(hex(random.randrange(0, 255)))
+        print(data)
+        r2n.cmd("wx " + data)
+
+    print(pertAddress)
+    liefparsed = lief.parse('/home/infobeyond/workspace/VirusShare/testElf/phtpert')
+    builder = lief.ELF.Builder(liefparsed)
+    builder.build()
+    print(liefparsed.get_content_from_virtual_address(PHT_Offset,
+                                                      liefparsed.header.numberof_segments * liefparsed.header.program_header_size))
+    return array.array('B', builder.get_build()).tobytes()
+
+# on check
+def pert_elf_section_header_table(fbytes, seed=None):
+    random.seed(seed)
+    liefparsed = lief.parse(fbytes)
+    # do not perturb if not executable
+    if str(liefparsed.header.file_type) != 'E_TYPE.EXECUTABLE' or liefparsed.header.numberof_sections == 0:
+        return fbytes
+
+    builder = lief.ELF.Builder(liefparsed)
+    builder.build()
+    builder.write('/home/infobeyond/workspace/VirusShare/testElf/phtpert')
+
+    SHT_Offset = liefparsed.header.section_header_offset
+    print(liefparsed.header)
+    print(SHT_Offset)
+    print(hex(SHT_Offset))
+    print(liefparsed.offset_to_virtual_address(SHT_Offset))
+
+    print('image base')
+    print(liefparsed.imagebase)
+    print(hex(liefparsed.imagebase))
+
+    pert_SHT_SN = random.randrange(0, liefparsed.header.numberof_sections)
+
+    try:
+        content = liefparsed.get_content_from_virtual_address(liefparsed.offset_to_virtual_address(SHT_Offset), 10)
+    except:
+        return fbytes
+
+
+    if len(content) > 0:
+        pass
+
+    print(liefparsed.get_content_from_virtual_address(liefparsed.offset_to_virtual_address(SHT_Offset),
+                                                      liefparsed.header.numberof_sections * liefparsed.header.section_header_size))
+    pertAddress = liefparsed.offset_to_virtual_address(
+        SHT_Offset + (pert_SHT_SN * liefparsed.header.section_header_size))
+
+    r2n = r2pipe.open('/home/infobeyond/workspace/VirusShare/testElf/phtpert', ['-2', '-n', '-w'])
+    for x in range(liefparsed.header.section_header_size):
+        # leave sh_addr(4-byte) and sh_offset(4-byte) unmodified
+        if x >= 12 and x <= 20:
+            continue
+        # insert random codes
+        r2n.cmd("s " + str(pertAddress + x))
+        data = str(hex(random.randrange(0, 255)))
+        print(data)
+        r2n.cmd("wx " + data)
+
+    print(pertAddress)
+    liefparsed = lief.parse('/home/infobeyond/workspace/VirusShare/testElf/phtpert')
+    builder = lief.ELF.Builder(liefparsed)
+    builder.build()
+    print(liefparsed.get_content_from_virtual_address(liefparsed.offset_to_virtual_address(SHT_Offset),
+                                                      liefparsed.header.numberof_sections * liefparsed.header.section_header_size))
+    return array.array('B', builder.get_build()).tobytes()
+
+def pert_elf_section_add(fbytes, seed=None):
+    fparsed = lief.parse(fbytes)
+    print('----------------------------------------------')
+    print('----------------------------------------------')
+    for s in fparsed.sections:
+        print(s)
+
+    print('----------------------------------------------')
+
+    length = random.randrange(1, 6)
+    upper = random.randrange(128)
+    L = 2 ** random.randint(5, 8)
+    new_section = lief.ELF.Section("." + "".join(random.sample([chr(i) for i in range(97, 123)], length)))
+    new_section.type = random.choice([lief.ELF.SECTION_TYPES.NULL, lief.ELF.SECTION_TYPES.PROGBITS, lief.ELF.SECTION_TYPES.SYMTAB, lief.ELF.SECTION_TYPES.STRTAB,
+    lief.ELF.SECTION_TYPES.RELA, lief.ELF.SECTION_TYPES.HASH, lief.ELF.SECTION_TYPES.DYNAMIC, lief.ELF.SECTION_TYPES.NOTE,
+    lief.ELF.SECTION_TYPES.NOBITS, lief.ELF.SECTION_TYPES.REL, lief.ELF.SECTION_TYPES.SHLIB, lief.ELF.SECTION_TYPES.DYNSYM,
+    lief.ELF.SECTION_TYPES.INIT_ARRAY, lief.ELF.SECTION_TYPES.FINI_ARRAY, lief.ELF.SECTION_TYPES.PREINIT_ARRAY, lief.ELF.SECTION_TYPES.GROUP,
+    lief.ELF.SECTION_TYPES.SYMTAB_SHNDX, lief.ELF.SECTION_TYPES.LOOS, lief.ELF.SECTION_TYPES.GNU_ATTRIBUTES, lief.ELF.SECTION_TYPES.GNU_HASH,
+    lief.ELF.SECTION_TYPES.GNU_VERDEF, lief.ELF.SECTION_TYPES.GNU_VERNEED, lief.ELF.SECTION_TYPES.HIOS, lief.ELF.SECTION_TYPES.ANDROID_REL,
+    lief.ELF.SECTION_TYPES.ANDROID_RELA, lief.ELF.SECTION_TYPES.LLVM_ADDRSIG, lief.ELF.SECTION_TYPES.RELR, lief.ELF.SECTION_TYPES.ARM_EXIDX,
+    lief.ELF.SECTION_TYPES.ARM_PREEMPTMAP, lief.ELF.SECTION_TYPES.ARM_ATTRIBUTES, lief.ELF.SECTION_TYPES.ARM_DEBUGOVERLAY, lief.ELF.SECTION_TYPES.ARM_OVERLAYSECTION,
+    lief.ELF.SECTION_TYPES.LOPROC, lief.ELF.SECTION_TYPES.X86_64_UNWIND, lief.ELF.SECTION_TYPES.HIPROC, lief.ELF.SECTION_TYPES.LOUSER, lief.ELF.SECTION_TYPES.HIUSER])
+    new_section.content = [random.randint(0, upper) for _ in range(L)]
+    new_section.alignment = 8
+    fparsed.add(new_section, False)
+
+    for s in fparsed.sections:
+        print(s)
+
+    return fparsed
+
+
+def pert_elf_segment_add(fbytes, seed=None):
+    fparsed = lief.parse(fbytes)
+    print('----------------------------------------------')
+    print('----------------------------------------------')
+    for s in fparsed.segments:
+        print(s)
+    print('----------------------------------------------')
+    length = random.randrange(1, 6)
+    upper = random.randrange(128)
+    L = 2 ** random.randint(5, 8)
+    new_segment = lief.ELF.Segment()
+
+    new_segment.add(random.choice([lief.ELF.SEGMENT_FLAGS.NONE,
+                                   lief.ELF.SEGMENT_FLAGS.X, lief.ELF.SEGMENT_FLAGS.W, lief.ELF.SEGMENT_FLAGS.R]))
+    new_segment.type = random.choice([lief.ELF.SEGMENT_TYPES.NULL, lief.ELF.SEGMENT_TYPES.LOAD, lief.ELF.SEGMENT_TYPES.DYNAMIC, lief.ELF.SEGMENT_TYPES.INTERP,
+    lief.ELF.SEGMENT_TYPES.NOTE, lief.ELF.SEGMENT_TYPES.SHLIB, lief.ELF.SEGMENT_TYPES.PHDR, lief.ELF.SEGMENT_TYPES.TLS,
+    lief.ELF.SEGMENT_TYPES.GNU_EH_FRAME, lief.ELF.SEGMENT_TYPES.GNU_PROPERTY, lief.ELF.SEGMENT_TYPES.GNU_STACK, lief.ELF.SEGMENT_TYPES.GNU_RELRO,
+    lief.ELF.SEGMENT_TYPES.ARM_ARCHEXT, lief.ELF.SEGMENT_TYPES.ARM_UNWIND, lief.ELF.SEGMENT_TYPES.UNWIND])
+    new_segment.content = [random.randint(0, upper) for _ in range(L)]
+    new_segment.alignment = 8
+    fparsed.add(new_segment)
+
+    for s in fparsed.segments:
+        print(s)
+
+    return fparsed
+
+def pert_elf_segment_append(fbytes, seed=None):
+    random.seed(seed)
+    fparsed = lief.parse(fbytes)
+    targeted_segment = random.choice(fparsed.segments)
+    L = 2 ** random.randint(5, 8)
+    available_size = targeted_segment.physical_size - len(targeted_segment.content)
+
+    if targeted_segment.virtual_size <= targeted_segment.physical_size:
+        targeted_segment.virtual_size = targeted_segment.physical_size
+    else:
+        targeted_segment.physical_size = (int(targeted_segment.virtual_size / 512) + 1) * 512
+
+    # print (targeted_section.name)
+
+    if L > available_size:
+        L = available_size
+
+    upper = random.randrange(128)  # it was 256
+    temp = list(targeted_segment.content)
+    temp.append(1)
+    # temp = temp + [random.randint(0, upper) for _ in range(L)]
+    targeted_segment.content = temp
+
+    return fparsed
+
 def pert_test():
-    peFolder = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/peMalwares/'
-    elfFolder = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/elfMalwares/'
+    # peFolder = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/peMalwares/'
+    # elfFolder = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/elfMalwares/'
+
+    peFolder = '/home/infobeyond/workspace/VirusShare/peMalwares/'
+    elfFolder = '/home/infobeyond/workspace/VirusShare/testElf/'
+
     filename = "/home/infobeyond/workspace/VirusShare/VirusShare_PE"
     # filename = '/media/infobeyond/New Volume/AutoGenMalware/Malware_Database/Malwares/elfMalwares/VirusShare_000a86a05b6208c3053ead8d1193b863'
 
@@ -488,34 +691,106 @@ def pert_test():
     i = 0
     for f in files:
         print(f"Processing file {i}/{len(files)} ({(i / len(files)) * 100} %):" + str(f))
+        f = 'VirusShare_4929aaa4badb19de127202fab1bd4747'
         filename = elfFolder + f
         print(filename)
         if lief.is_elf(filename):
             fbytes = open(filename, "rb").read()
-            # pert_inject_random_codecave(fbytes)
-            # upx_print()
-            # pert_rich_header(fbytes)
-            liefparsed = lief.parse(fbytes)
 
-            print(liefparsed.imported_functions)
-            print(liefparsed.libraries)
+            newfbytes = p.elf_section_add(fbytes)
+            pert_elf_section_header_table(newfbytes)
+            fparsed = lief.parse(newfbytes)
+            fparsed.write(filename + '_Pert')
 
-            liefparsed.add_library('libcaca.so.0')
-            liefparsed.add_exported_function()
-
-            print('-----------')
-
-            # for func in liefparsed.imported_functions:
-            #     print(func.name)
-            #     print(func.address)
+            # pert_elf_segment_append(fbytes)
+            # pert_elf_segment_add(fbytes)
+            # pert_elf_section_add(fbytes)
+            # pert_elf_section_header_table(fbytes)
+            # # pert_elf_program_header_table(fbytes)
+            # # pert_inject_random_codecave(fbytes)
+            # # upx_print()
+            # # pert_rich_header(fbytes)
+            # liefparsed = lief.parse(fbytes)
+            # # print(liefparsed.concrete)
             #
+            # for seg in liefparsed.segments:
+            #     print(seg)
+            #
+            # print(liefparsed.header)
+            # print(liefparsed.header.program_header_offset)
+            # print(liefparsed.header.program_header_size)
+            # print(liefparsed.header.numberof_segments)
+            # print('----------------------------------')
+            # print(liefparsed.header.section_header_offset)
+            # print(liefparsed.header.section_header_size)
+            # print(liefparsed.header.numberof_sections)
+            # print(liefparsed.header.file_type)
+            #
+            # PHT_address = liefparsed.offset_to_virtual_address(liefparsed.header.program_header_offset)
+            # print (liefparsed.offset_to_virtual_address(liefparsed.header.program_header_offset))
+            # print(liefparsed.get_content_from_virtual_address(PHT_address, liefparsed.header.numberof_segments * liefparsed.header.program_header_size))
+            #
+            #
+            # liefparsed.patch_address(PHT_address, [0x4])
+            #
+            # print(liefparsed.get_content_from_virtual_address(PHT_address,
+            #                                                   liefparsed.header.numberof_segments * liefparsed.header.program_header_size))
+            #
+            # builder = lief.ELF.Builder(liefparsed)
+            # # builder.build_imports(True)
+            # # builder.patch_imports(True)
+            #
+            # # print(builder.config_t)
+            #
+            # builder.build()
+            # liefparsed.write('/home/infobeyond/workspace/VirusShare/testElf/phtpert1')
+            #
+            # newfbytes = array.array('B', builder.get_build()).tobytes()
+            # newliefparsed = lief.parse(newfbytes)
+            #
+            #
+            # print(newliefparsed.get_content_from_virtual_address(newliefparsed.offset_to_virtual_address(newliefparsed.header.program_header_offset),
+            #                                                   newliefparsed.header.numberof_segments * newliefparsed.header.program_header_size))
+            #
+            #
+            #
+            #
+            # print(hex(liefparsed.imagebase))
+            #
+            #
+            # # va = liefparsed.offset_to_virtual_address(82)
+            # #
+            # # va1 = liefparsed.offset_to_virtual_address(0x33172)
+            # #
+            # # print(hex(va))
+            # # print(hex(va1))
+            # #
+            # # PHT = liefparsed.get_content_from_virtual_address(32850, 10000)
+            # #
+            # # PHTHex=[]
+            # # for en in PHT:
+            # #     PHTHex.append(hex(en))
+            # # print(PHTHex)
+            # # print(liefparsed.get_content_from_virtual_address(32850, 10000))
+            # # print(liefparsed.libraries)
+            #
+            # # liefparsed.add_library('libcaca.so.0')
+            # # liefparsed.add_exported_function()
+            # print('-----------')
+            #
+            # # for func in liefparsed.imported_functions:
+            # #     print(func.name)
+            # #     print(func.address)
+            # #
+            # # if len(liefparsed.libraries) > 0:
+            # #     print(liefparsed.libraries)
+            # #     print('---------------------------------------------------------')
+            # print(liefparsed.imported_functions)
+            # print(liefparsed.libraries)
             # if len(liefparsed.libraries) > 0:
-            #     print(liefparsed.libraries)
-            #     print('---------------------------------------------------------')
-            print(liefparsed.imported_functions)
-            print(liefparsed.libraries)
-
-
+            #     print(liefparsed.get_library(liefparsed.libraries[0]))
+            #
+            #
             break
             i = i + 1
 
@@ -543,12 +818,53 @@ def collect_ELF_Shared_Library():
     with open(os.path.join(module_path, 'elf_dll_imports.json'), 'w') as fp:
         json.dump(libDict, fp)
 
+
+def jottiVirusScanTest():
+    # elfMal = '/home/infobeyond/workspace/VirusShare/testElf/VirusShare_4929aaa4badb19de127202fab1bd4747'
+    # fbytes = open(elfMal, "rb").read()
+    # scanJobId = a.send_v2_jotti_scan(fbytes)
+    # jotti_result, jotti_report = a.jotti_v2_analysis(scanJobId)
+    # print(jotti_result)
+    # print(jotti_report)
+    elfFolder = '/home/infobeyond/workspace/VirusShare/elfMalwares/'
+    files = os.listdir(elfFolder)
+    i = 0
+    scanJobIds = []
+    for f in files:
+        if i > 20:
+            break
+        print(f"Processing file {i}/{len(files)} ({(i / len(files)) * 100} %):" + str(f))
+        filename = elfFolder + f
+        fbytes = open(filename, "rb").read()
+        scanJobId = a.send_v2_jotti_scan(fbytes)
+        scanJobIds.append(scanJobId)
+        i = i + 1
+
+    for scanJobId in scanJobIds:
+        jotti_result, jotti_report = a.jotti_v2_analysis(scanJobId)
+        print('Scan result for id '+str(scanJobId))
+        print(jotti_result)
+        print(jotti_report)
+        print('-----------------------------------')
+    pass
+
 # Press the green button in the gutter to run the script.
 if __name__ == '__main__':
     # pert_test()
     # jsonStr = json.dumps(myDict)
     # print(jsonStr)
-    pert_test()
+    # pert_test()
+    # jottiVirusScanTest()
+
+    elfFolder = '/home/infobeyond/workspace/VirusShare/elfMalwares/'
+    savedFile = '/home/infobeyond/workspace/VirusShare/elfMalwaresList'
+    files = os.listdir(elfFolder)
+    i = 0
+    scanJobIds = []
+    for f in files:
+        print(str("'")+f+str("'")+str(','))
+        pass
+
     pass
 
 

@@ -1,3 +1,5 @@
+import pickle
+
 import perturbation as p
 import analysis as anal
 import os
@@ -12,24 +14,37 @@ import json
 
 apikeylist = open("vt_api_key").read().split("\n")[:-1]
 apilen = len(apikeylist)
+runningStatus = {}
 
 # pertlist = ['overlay_append', 'upx_pack', 'upx_unpack', 'remove_signature', 'remove_debug', 'break_optional_header_checksum', 'inject_random_codecave', 'section_rename', 'pert_dos_stub', 'pert_bin_name', 'pert_optional_header_dllchlist', 'pert_optional_header_dllch', 'pert_rich_header', 'pert_dos_header', 'section_add', 'section_append']
-
 # pertlist = ["overlay_append", "upx_pack", "upx_unpack", "inject_random_codecave", "section_rename", "pert_dos_stub",
 #             "pert_optional_header_dllchlist", "pert_rich_header", "pert_dos_header", "section_add", "section_append",
 #             "pert_optional_header", "pert_coff_header", "pert_data_directory"]
-
 # pertlist = ["overlay_append","upx_pack","upx_unpack", "inject_random_codecave","section_rename","pert_dos_stub","pert_optional_header_dllchlist"
 #             ,"pert_rich_header","pert_dos_header","section_add","pert_optional_header","pert_coff_header","pert_data_directory"]
 
-pertlist = ["overlay_append", "upx_pack", "upx_unpack", "inject_random_codecave", "section_rename", "pert_dos_stub",
-            "pert_rich_header", "pert_dos_header", "section_add",
-            "pert_optional_header", "pert_coff_header", "pert_data_directory"]
+###### Perturbation lists for PE executables
+# pertListActive = ["overlay_append", "upx_pack", "upx_unpack", "inject_random_codecave", "section_rename", "pert_dos_stub",
+#             "pert_rich_header", "pert_dos_header", "section_add",
+#             "pert_optional_header", "pert_coff_header", "pert_data_directory"]
 
-# elf_pertlist = ["elf_overlay_append", "elf_upx_pack", "elf_upx_unpack", "elf_inject_random_codecave", "elf_section_rename", "elf_section_add", "elf_section_append"]
+###### Perturbation lists for ELF executables
+pertListActive = ["elf_overlay_append",
+                "elf_upx_pack",
+                "elf_upx_unpack",
+                "elf_inject_random_codecave",
+                "elf_section_rename",
+                "elf_section_add",
+                "elf_section_append",
+                "elf_segment_add",
+                "elf_program_header_table",
+                "elf_segment_append",
+                "elf_imports_append"]
 
 one_time = ['upx_unpack', 'upx_pack', 'break_optional_header_checksum', 'remove_signature', 'remove_debug']
 
+pickleSaveDirectory = '/home/infobeyond/workspace/VirusShare/AKMVG/elfMalwareGASaved/'
+# pickleSaveDirectory = '/home/infobeyond/workspace/VirusShare/AKMVG/peMalwareGASaved/'
 
 def difference(fbytes1, fbytes2):
     hash1 = ssdeep.hash(fbytes1)
@@ -43,8 +58,8 @@ class origin:
         self.fbytes = fbytes
         self.vt_api_count = 0
         self.cuckoosig = anal.get_cuckoo_report(fname)
-        self.md5 = anal.send_malware_scan(fname, apikeylist[self.vt_api_count], self)
-        self.vt_result, vt_report = anal.get_malware_analysis(self.md5, self,fbytes)
+        self.md5 = anal.send_malware_scan(fbytes, apikeylist[self.vt_api_count], self)
+        self.vt_result, vt_report = anal.get_malware_analysis(self.md5, self, fbytes)
         self.vt_dlist = "test"
         self.generation_number = gnum
         self.nameWithoutPath = name
@@ -74,38 +89,66 @@ class Chromosome:
 
     def perturb(self, chosen_pert, initial=False):
         self.pert = chosen_pert
+        fbytes = b''
         for pert in chosen_pert:
             if(pert == 'overlay_append'):
-                self.fbytes = p.overlay_append(self.fbytes)
+                fbytes = p.overlay_append(self.fbytes)
             elif (pert == 'upx_pack'):
-                self.fbytes = p.upx_pack(self.fbytes)
+                fbytes = p.upx_pack(self.fbytes)
             elif (pert == 'upx_unpack'):
-                self.fbytes = p.upx_unpack(self.fbytes)
+                fbytes = p.upx_unpack(self.fbytes)
             elif (pert == 'inject_random_codecave'):
-                self.fbytes = p.inject_random_codecave(self.fbytes)
+                fbytes = p.inject_random_codecave(self.fbytes)
             elif (pert == 'section_rename'):
-                self.fbytes = p.section_rename(self.fbytes)
+                fbytes = p.section_rename(self.fbytes)
             elif (pert == 'pert_dos_stub'):
-                self.fbytes = p.pert_dos_stub(self.fbytes)
+                fbytes = p.pert_dos_stub(self.fbytes)
             elif (pert == 'pert_optional_header_dllchlist'):
-                self.fbytes = p.pert_optional_header_dllchlist(self.fbytes)
+                fbytes = p.pert_optional_header_dllchlist(self.fbytes)
             elif (pert == 'pert_rich_header'):
-                self.fbytes = p.pert_rich_header(self.fbytes)
+                fbytes = p.pert_rich_header(self.fbytes)
             elif (pert == 'pert_dos_header'):
-                self.fbytes = p.pert_dos_header(self.fbytes)
+                fbytes = p.pert_dos_header(self.fbytes)
             elif (pert == 'section_add'):
-                self.fbytes = p.section_add(self.fbytes)
+                fbytes = p.section_add(self.fbytes)
             elif (pert == 'section_append'):
-                self.fbytes = p.section_append(self.fbytes)
+                fbytes = p.section_append(self.fbytes)
             elif (pert == 'pert_optional_header'):
-                self.fbytes = p.pert_optional_header(self.fbytes)
+                fbytes = p.pert_optional_header(self.fbytes)
             elif (pert == 'pert_coff_header'):
-                self.fbytes = p.pert_coff_header(self.fbytes)
+                fbytes = p.pert_coff_header(self.fbytes)
             elif (pert == 'pert_data_directory'):
-                self.fbytes = p.pert_data_directory(self.fbytes)
+                fbytes = p.pert_data_directory(self.fbytes)
+            elif (pert == "elf_overlay_append"):
+                fbytes = p.elf_overlay_append(self.fbytes)
+            elif (pert == "elf_upx_pack"):
+                fbytes = p.elf_upx_pack(self.fbytes)
+            elif (pert == "elf_upx_unpack"):
+                fbytes = p.elf_upx_unpack(self.fbytes)
+            elif (pert == "elf_inject_random_codecave"):
+                fbytes = p.elf_inject_random_codecave(self.fbytes)
+            elif (pert == "elf_section_rename"):
+                fbytes = p.elf_section_rename(self.fbytes)
+            elif (pert == "elf_section_add"):
+                fbytes = p.elf_section_add(self.fbytes)
+            elif (pert == "elf_section_append"):
+                fbytes = p.elf_segment_append(self.fbytes)
+            elif (pert == "elf_segment_add"):
+                fbytes = p.elf_segment_add(self.fbytes)
+            elif (pert == "elf_program_header_table"):
+                fbytes = p.elf_program_header_table(self.fbytes)
+            elif (pert == "elf_segment_append"):
+                fbytes = p.elf_segment_append(self.fbytes)
+            elif (pert == "elf_imports_append"):
+                fbytes = p.elf_imports_append(self.fbytes)
 
-            self.fbytes = eval("p." + pert + "(self.fbytes)")
-        #     time.sleep(5)
+            if len(fbytes) == 0:
+                print(len(fbytes))
+            else:
+                self.fbytes = fbytes
+
+            # self.fbytes = eval("p." + pert + "(self.fbytes)")
+            # time.sleep(5)
 
 
 
@@ -143,8 +186,9 @@ class Chromosome:
 
 
 class GP:
-    def __init__(self, fbytes, population, pertnum, output_path, skip):
+    def __init__(self, fbytes, population, pertnum, output_path, skip, original):
         random.seed(None)
+        self.original = original
         self.population = []
         self.size = population
         self.pertnum = pertnum
@@ -152,14 +196,14 @@ class GP:
         self.skip = skip
 
         for i in range(population):
-            chosen_pert = random.sample(pertlist, self.pertnum)
+            chosen_pert = random.sample(pertListActive, self.pertnum)
             member = Chromosome(fbytes)
             member.perturb(chosen_pert, initial=True)
             self.population.append(member)
 
         self.generationnum = 1
 
-    def score(self, original,generation_no):
+    def score(self, original, generation_no):
         i = 1
         chosen_idx = random.randrange(apilen)
 
@@ -208,7 +252,7 @@ class GP:
             new_pop = Chromosome(bytes(pop.fbytes))
             new_pop.prev_pert = list(pop.prev_pert)
             new_pop.prev_pert.append(list(pop.pert))
-            nchosen_pert = random.sample(pertlist, self.pertnum)
+            nchosen_pert = random.sample(pertListActive, self.pertnum)
             new_pop.perturb(nchosen_pert)
 
             if new_pop.fbytes == pop.fbytes:
@@ -226,7 +270,7 @@ class GP:
                 new_pop.prev_pert = list(pop.prev_pert)
                 new_pop.prev_pert.append(list(pop.pert))
 
-                nchosen_pert = random.sample(pertlist, self.pertnum)
+                nchosen_pert = random.sample(pertListActive, self.pertnum)
                 new_pop.perturb(nchosen_pert)
 
                 if new_pop.fbytes == pop.fbytes:
@@ -236,43 +280,65 @@ class GP:
 
                 self.population.append(new_pop)
 
-    def generation(self, original, gnum):
+    def pickleDump(self):
+        savedFileName = pickleSaveDirectory + str(self.original.nameWithoutPath) + \
+                        '_' + str(self.original.generation_number) + '_' + str(self.size)
+        with open(savedFileName, 'wb') as saved_file:
+            pickle.dump(self, saved_file)
+
+    def printStoreResults(self, end_time):
+        print("* " + str(self.generationnum) + " generation: 5 best populations\n")
+        for k in range(self.size):
+            print("Generation - " + str(self.generationnum) + ", Population - " + str(k + 1))
+            print("Fitness Score (FS): " + str(round(self.population[k].score, 2)))
+            print("Malconv Detection Rate (DR): " + str(round(self.population[k].vt_result * 100, 2)))
+            print("SSDEEP Score (SS): " + str(self.population[k].diff))
+            print("Malware Functionality Preserved (Cuckoo Analysis): " + str(self.population[k].functional))
+            print("Applied Perturbations: " + str(self.population[k].pert) + str(self.population[k].prev_pert))
+            # print("Previously applied perturbations: " + str(self.population[k].prev_pert))
+            print("")
+            ## write on the file
+            with open(self.output_path, "a") as wf:
+                wf.write(str(self.original.nameWithoutPath) + ";"
+                         + str(self.population[k].nameWithoutPath) + ";"
+                         + 'malconv' + ";"
+                         + str(self.original.generation_number) + ";"
+                         + str(self.size) + ";"
+                         + str(self.generationnum) + ";"
+                         + str(k) + ";"
+                         + str(end_time) + ";"
+                         + str(self.population[k].functional) + ";"
+                         + str(self.population[k].diff) + ";"
+                         + str(self.population[k].vt_result) + ";"
+                         + str(self.population[k].score) + ";"
+                         + str(self.population[k].prev_pert) + ","
+                         + str(self.population[k].pert) + " \n")
+            # save on file to resume later
+            self.pickleDump()
+
+
+
+    def generation(self, original):
         #time.sleep(10)
-        start_time = time.time()
-        self.score(original, 0)
-        end_time = time.time() - start_time
-        # self.score_without_vt(original)
 
-        for i in range(gnum):
+        if self.generationnum == 1:
+            start_time = time.time()
+            self.score(original, 1)
+            end_time = time.time() - start_time
+            self.printStoreResults(end_time)
+
+        for i in range(original.generation_number):
+            if (i+1) <= self.generationnum:
+                continue
+
             self.generationnum = i+1
-            print("* " + str(self.generationnum) + " generation: 5 best populations\n")
-            for k in range(self.size):
-                print("Generation - " + str(self.generationnum) + ", Population - " + str(k+1))
-                print("Fitness Score (FS): " + str(round(self.population[k].score, 2)))
-                print("Malconv Detection Rate (DR): " + str(round(self.population[k].vt_result * 100, 2)))
-                print("SSDEEP Score (SS): " + str(self.population[k].diff))
-                print("Malware Functionality Preserved (Cuckoo Analysis): " + str(self.population[k].functional))
-                print("Applied Perturbations: " + str(self.population[k].pert) + str(self.population[k].prev_pert))
-                # print("Previously applied perturbations: " + str(self.population[k].prev_pert))
-                print("")
-                ## write on the file
-                with open(self.output_path, "a") as wf:
-                    wf.write(str(original.nameWithoutPath) + ";"
-                             + str(self.population[k].nameWithoutPath) + ";"
-                             + 'malconv' + ";"
-                             + str(gnum) + ";"
-                             + str(self.size) + ";"
-                             + str(self.generationnum) + ";"
-                             + str(k) + ";"
-                             + str(end_time) + ";"
-                             + str(self.population[k].functional) + ";"
-                             + str(self.population[k].diff) + ";"
-                             + str(self.population[k].vt_result) + ";"
-                             + str(self.population[k].score) + ";"
-                             + str(self.population[k].prev_pert) + ","
-                             + str(self.population[k].pert) + " \n")
-
             start_time = time.time()
             self.mutate(0.3)
             self.selection(original, self.generationnum)
             end_time = time.time() - start_time
+
+            self.printStoreResults(end_time)
+
+    def execute(self):
+        self.generation(self.original)
+        pass

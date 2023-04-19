@@ -10,8 +10,8 @@ apikeylist = open("vt_api_key").read().split("\n")[:-1]
 apilen = len(apikeylist)
 vt_api_invoke_count = 0
 n_network = malconv('./malconv/malconv.h5')
-enable_cuckoo = True
-scoring_system = 'malonv' #---- vt or jotti or malconv
+enable_cuckoo = False
+scoring_system = 'jotti' #---- vt or jotti or malconv
 
 def send_to_sandbox(fbytes):
     sburl = "http://localhost:8090/tasks/create/file"
@@ -136,7 +136,7 @@ def vt_v3_analysis(filehash, original):
     vt_result = vt_report.stats["malicious"] / (vt_report.stats['undetected'] + vt_report.stats["malicious"])
     return vt_result, vt_report.results
 
-def creat_v2_jotti_scan_token( apikey, origin):
+def creat_v2_jotti_scan_token():
     url = 'https://virusscan.jotti.org/api/filescanjob/v2/createscantoken'
     headers = {'accept': 'application/json', 'Content-Type': 'multipart/form-data',
                'Authorization': 'Key nA5BxHYJU77V16Yy'}
@@ -146,7 +146,7 @@ def creat_v2_jotti_scan_token( apikey, origin):
         print('---catch timeout --')
         print(e)
         time.sleep(30)
-        origin.vt_api_count = (origin.vt_api_count + 1) % apilen
+        # origin.vt_api_count = (origin.vt_api_count + 1) % apilen
         return creat_v2_jotti_scan_token()
     print(response.status_code)
 
@@ -154,11 +154,11 @@ def creat_v2_jotti_scan_token( apikey, origin):
         return response.json()["scanToken"]
     else:
         time.sleep(30)
-        origin.vt_api_count = (origin.vt_api_count + 1) % apilen
+        # origin.vt_api_count = (origin.vt_api_count + 1) % apilen
         return creat_v2_jotti_scan_token()
     # pass
 
-def create_v2_jotti_scan_job(fbytes,scantoken, apikey, origin):
+def create_v2_jotti_scan_job(fbytes,scantoken):
     url = 'https://virusscan.jotti.org/api/filescanjob/v2/createjob'
     headers = {'accept': '*/*',
                'Authorization': 'Key nA5BxHYJU77V16Yy'}
@@ -171,31 +171,31 @@ def create_v2_jotti_scan_job(fbytes,scantoken, apikey, origin):
         print('---catch timeout --')
         print(e)
         time.sleep(30)
-        origin.vt_api_count = (origin.vt_api_count + 1) % apilen
+        # origin.vt_api_count = (origin.vt_api_count + 1) % apilen
         return create_v2_jotti_scan_job(fbytes, scantoken)
 
     if response.status_code == 201:
         return response.json()["fileScanJobId"]
     else:
         time.sleep(30)
-        origin.vt_api_count = (origin.vt_api_count + 1) % apilen
+        # origin.vt_api_count = (origin.vt_api_count + 1) % apilen
         return create_v2_jotti_scan_job(fbytes, scantoken)
     # pass
 
-def send_v2_jotti_scan(fbytes, apikey, origin):
-    if origin.vt_api_count >= 100:
-        time.sleep(300)
-    else:
-        time.sleep(2)
-    scanToken = creat_v2_jotti_scan_token(apikey, origin)
-    scanJobId = create_v2_jotti_scan_job(fbytes, scanToken,apikey, origin)
+def send_v2_jotti_scan(fbytes):
+    # if origin.vt_api_count >= 100:
+    #     time.sleep(300)
+    # else:
+    #     time.sleep(2)
+    scanToken = creat_v2_jotti_scan_token()
+    scanJobId = create_v2_jotti_scan_job(fbytes, scanToken)
     return scanJobId
 
-def get_v2_jotti_report(scanJobId,apikey, origin):
-    if origin.vt_api_count >= 100:
-        time.sleep(300)
-    else:
-        time.sleep(20)
+def get_v2_jotti_report(scanJobId):
+    # if origin.vt_api_count >= 100:
+    #     time.sleep(300)
+    # else:
+    #     time.sleep(20)
     url = 'https://virusscan.jotti.org/api/filescanjob/v2/getjobstatus/' + scanJobId
     headers = {'accept': 'application/json', 'Content-Type': 'multipart/form-data',
                'Authorization': 'Key nA5BxHYJU77V16Yy'}
@@ -205,22 +205,22 @@ def get_v2_jotti_report(scanJobId,apikey, origin):
         print('---catch timeout --')
         print(e)
         time.sleep(30)
-        origin.vt_api_count = (origin.vt_api_count + 1) % apilen
-        return get_v2_jotti_report(scanJobId, apikey, origin)
+        # origin.vt_api_count = (origin.vt_api_count + 1) % apilen
+        return get_v2_jotti_report(scanJobId)
 
     if response.status_code == 200:
         if response.json()['scanJob']['finishedOn'] == None:# Scan result is not ready
-            return get_v2_jotti_report(scanJobId, apikey, origin)
+            return get_v2_jotti_report(scanJobId)
         else:# scan result is ready
             return response.json()
     else:# error accessing API
-        origin.vt_api_count = (origin.vt_api_count + 1) % apilen
-        return get_v2_jotti_report(scanJobId, apikey, origin)
+        # origin.vt_api_count = (origin.vt_api_count + 1) % apilen
+        return get_v2_jotti_report(scanJobId)
     # pass
 
-def jotti_v2_analysis(scanJobId, original):
-    original.vt_api_count = (original.vt_api_count + 1) % apilen
-    jotti_report = get_v2_jotti_report(scanJobId, apikeylist[original.vt_api_count], original)
+def jotti_v2_analysis(scanJobId):
+    # original.vt_api_count = (original.vt_api_count + 1) % apilen
+    jotti_report = get_v2_jotti_report(scanJobId)
     jotti_result = jotti_report["scanJob"]["scannersDetected"] / jotti_report["scanJob"]["scannersRun"]
     return jotti_result, jotti_report
 
@@ -228,7 +228,7 @@ def get_malware_analysis(scanJobId, original, fbytes=b""):
     if scoring_system == 'vt':
         return vt_v3_analysis(scanJobId, original)
     elif scoring_system == 'jotti':
-        return jotti_v2_analysis(scanJobId, original)
+        return jotti_v2_analysis(scanJobId)
     else:
         return n_network.predict_bytes(fbytes), []
 
@@ -236,7 +236,7 @@ def send_malware_scan(fbytes, apikey, origin):
     if scoring_system == 'vt':
         return send_v3_vt_scan(fbytes, apikey, origin)
     elif scoring_system == 'jotti':
-        return send_v2_jotti_scan(fbytes, apikey, origin)
+        return send_v2_jotti_scan(fbytes)
     else:
         return ''
 

@@ -6,12 +6,15 @@ import json
 import array
 import subprocess
 import pefile
+import r2pipe
 
 module_path = os.path.split(os.path.abspath(sys.modules[__name__].__file__))[0]
 COMMON_SECTION_NAMES = open(os.path.join(
     module_path, 'section_names.txt'), 'r').read().rstrip().split('\n')
 COMMON_IMPORTS = json.load(
     open(os.path.join(module_path, 'small_dll_imports.json'), 'r'))
+ELF_COMMON_IMPORTS = json.load(
+    open(os.path.join(module_path, 'elf_dll_imports.json'), 'r'))
 STUB_FILE = ""#"hello_lief.bin"
 STUB = ""#lief.parse(os.path.join(module_path, STUB_FILE))
 lief.logging.disable()
@@ -78,6 +81,17 @@ def imports_append(fbytes, seed=None):
 
     return fparsed_to_bytes(fparsed, im=True)
 
+def elf_imports_append(fbytes, seed=None):
+    random.seed(seed)
+    fparsed = lief.parse(fbytes)
+
+    while True:
+        libname = random.choice(list(ELF_COMMON_IMPORTS.keys()))
+        if libname not in fparsed.libraries:
+            fparsed.add_library(libname)
+            break
+
+    return elf_fparsed_to_bytes(fparsed)
 
 # mostly failed
 def section_add(fbytes, seed=None):
@@ -114,14 +128,33 @@ def section_add(fbytes, seed=None):
     return fparsed_to_bytes(fparsed)
 
 def elf_section_add(fbytes, seed=None):
-    random.seed(seed)
     fparsed = lief.parse(fbytes)
-    i = random.randrange(1, 1000)
-    section = lief.ELF.Section(f".test.{i}", lief.ELF.SECTION_TYPES.PROGBITS)
-    section += lief.ELF.SECTION_FLAGS.EXECINSTR
-    section += lief.ELF.SECTION_FLAGS.WRITE
-    section.content = STUB.segments[0].content  # First LOAD segment which holds payload
-    fparsed.add(section, loaded=False)
+    length = random.randrange(1, 6)
+    upper = random.randrange(128)
+    L = 2 ** random.randint(5, 8)
+    new_section = lief.ELF.Section("." + "".join(random.sample([chr(i) for i in range(97, 123)], length)))
+    new_section.type = random.choice(
+        [lief.ELF.SECTION_TYPES.NULL, lief.ELF.SECTION_TYPES.PROGBITS, lief.ELF.SECTION_TYPES.SYMTAB,
+         lief.ELF.SECTION_TYPES.STRTAB,
+         lief.ELF.SECTION_TYPES.RELA, lief.ELF.SECTION_TYPES.HASH, lief.ELF.SECTION_TYPES.DYNAMIC,
+         lief.ELF.SECTION_TYPES.NOTE,
+         lief.ELF.SECTION_TYPES.NOBITS, lief.ELF.SECTION_TYPES.REL, lief.ELF.SECTION_TYPES.SHLIB,
+         lief.ELF.SECTION_TYPES.DYNSYM,
+         lief.ELF.SECTION_TYPES.INIT_ARRAY, lief.ELF.SECTION_TYPES.FINI_ARRAY, lief.ELF.SECTION_TYPES.PREINIT_ARRAY,
+         lief.ELF.SECTION_TYPES.GROUP,
+         lief.ELF.SECTION_TYPES.SYMTAB_SHNDX, lief.ELF.SECTION_TYPES.LOOS, lief.ELF.SECTION_TYPES.GNU_ATTRIBUTES,
+         lief.ELF.SECTION_TYPES.GNU_HASH,
+         lief.ELF.SECTION_TYPES.GNU_VERDEF, lief.ELF.SECTION_TYPES.GNU_VERNEED, lief.ELF.SECTION_TYPES.HIOS,
+         lief.ELF.SECTION_TYPES.ANDROID_REL,
+         lief.ELF.SECTION_TYPES.ANDROID_RELA, lief.ELF.SECTION_TYPES.LLVM_ADDRSIG, lief.ELF.SECTION_TYPES.RELR,
+         lief.ELF.SECTION_TYPES.ARM_EXIDX,
+         lief.ELF.SECTION_TYPES.ARM_PREEMPTMAP, lief.ELF.SECTION_TYPES.ARM_ATTRIBUTES,
+         lief.ELF.SECTION_TYPES.ARM_DEBUGOVERLAY, lief.ELF.SECTION_TYPES.ARM_OVERLAYSECTION,
+         lief.ELF.SECTION_TYPES.LOPROC, lief.ELF.SECTION_TYPES.X86_64_UNWIND, lief.ELF.SECTION_TYPES.HIPROC,
+         lief.ELF.SECTION_TYPES.LOUSER, lief.ELF.SECTION_TYPES.HIUSER])
+    new_section.content = [random.randint(0, upper) for _ in range(L)]
+    new_section.alignment = 8
+    fparsed.add(new_section, False)
     return elf_fparsed_to_bytes(fparsed)
 
 def section_append_(fbytes, seed=None):
@@ -153,7 +186,29 @@ def section_append(fbytes, seed=None):
     return fparsed_to_bytes(section_append_(fbytes, seed))
 
 def elf_section_append(fbytes, seed=None):
-    return elf_fparsed_to_bytes(section_append_(fbytes, seed))
+    random.seed(seed)
+    fparsed = lief.parse(fbytes)
+    targeted_section = random.choice(fparsed.sections)
+    L = 2 ** random.randint(5, 8)
+    available_size = targeted_section.size - len(targeted_section.content)
+
+    if targeted_section.original_size <= targeted_section.size:
+        targeted_section.size = targeted_section.original_size
+    else:
+        targeted_section.size = (int(targeted_section.original_size / 512) + 1) * 512
+
+    # print (targeted_section.name)
+
+    if L > available_size:
+        L = available_size
+
+    upper = random.randrange(128)  # it was 256
+    temp = list(targeted_section.content)
+    temp.append(1)
+    # temp = temp + [random.randint(0, upper) for _ in range(L)]
+    targeted_section.content = temp
+
+    return elf_fparsed_to_bytes(fparsed)
 
 def upx_pack(fbytes, seed=None):
     # tested with UPX 3.91
@@ -453,6 +508,90 @@ def pert_data_directory(fbytes):
     return fparsed_to_bytes(fparsed)
 
 
+def elf_segment_add(fbytes, seed=None):
+    fparsed = lief.parse(fbytes)
+
+    length = random.randrange(1, 6)
+    upper = random.randrange(128)
+    L = 2 ** random.randint(5, 8)
+    new_segment = lief.ELF.Segment()
+
+    new_segment.add(random.choice([lief.ELF.SEGMENT_FLAGS.NONE,
+                                   lief.ELF.SEGMENT_FLAGS.X, lief.ELF.SEGMENT_FLAGS.W, lief.ELF.SEGMENT_FLAGS.R]))
+    new_segment.type = random.choice([lief.ELF.SEGMENT_TYPES.NULL, lief.ELF.SEGMENT_TYPES.LOAD, lief.ELF.SEGMENT_TYPES.DYNAMIC, lief.ELF.SEGMENT_TYPES.INTERP,
+    lief.ELF.SEGMENT_TYPES.NOTE, lief.ELF.SEGMENT_TYPES.SHLIB, lief.ELF.SEGMENT_TYPES.PHDR, lief.ELF.SEGMENT_TYPES.TLS,
+    lief.ELF.SEGMENT_TYPES.GNU_EH_FRAME, lief.ELF.SEGMENT_TYPES.GNU_PROPERTY, lief.ELF.SEGMENT_TYPES.GNU_STACK, lief.ELF.SEGMENT_TYPES.GNU_RELRO,
+    lief.ELF.SEGMENT_TYPES.ARM_ARCHEXT, lief.ELF.SEGMENT_TYPES.ARM_UNWIND, lief.ELF.SEGMENT_TYPES.UNWIND])
+    new_segment.content = [random.randint(0, upper) for _ in range(L)]
+    new_segment.alignment = 8
+    fparsed.add(new_segment)
+
+
+    return elf_fparsed_to_bytes(fparsed)
+
+
+def elf_program_header_table(fbytes, seed=None):
+    random.seed(seed)
+    liefparsed = lief.parse(fbytes)
+
+    # do not perturb if not executable
+    if str(liefparsed.header.file_type) == 'E_TYPE.EXECUTABLE':
+        return fbytes
+
+    builder = lief.ELF.Builder(liefparsed)
+    builder.build()
+    builder.write('/home/infobeyond/workspace/VirusShare/testElf/phtpert')
+
+    PHT_Offset = liefparsed.header.program_header_offset
+    pert_PHT_SN = random.randrange(0, liefparsed.header.numberof_segments)
+    print(liefparsed.get_content_from_virtual_address(PHT_Offset,
+                                                      liefparsed.header.numberof_segments * liefparsed.header.program_header_size))
+    pertAddress = liefparsed.offset_to_virtual_address(PHT_Offset + (pert_PHT_SN * liefparsed.header.program_header_size))
+
+    r2n = r2pipe.open('/home/infobeyond/workspace/VirusShare/testElf/phtpert', ['-2', '-n','-w'])
+    for x in range(liefparsed.header.program_header_size):
+        # leave p_offset(4-byte), p_vaddr(4-byte), and p_paddr(4-byte) unmodified
+        if x >=4 and x<=16:
+            continue
+        # insert random codes
+        r2n.cmd("s " + str(liefparsed.offset_to_virtual_address(pertAddress+x)))
+        data = str(hex(random.randrange(0, 255)))
+        print(data)
+        r2n.cmd("wx " + data)
+
+    print(pertAddress)
+    liefparsed = lief.parse('/home/infobeyond/workspace/VirusShare/testElf/phtpert')
+    builder = lief.ELF.Builder(liefparsed)
+    builder.build()
+    print(liefparsed.get_content_from_virtual_address(PHT_Offset,
+                                                      liefparsed.header.numberof_segments * liefparsed.header.program_header_size))
+    return array.array('B', builder.get_build()).tobytes()
+
+def elf_segment_append(fbytes, seed=None):
+    random.seed(seed)
+    fparsed = lief.parse(fbytes)
+    targeted_segment = random.choice(fparsed.segments)
+    L = 2 ** random.randint(5, 8)
+    available_size = targeted_segment.physical_size - len(targeted_segment.content)
+
+    if targeted_segment.virtual_size <= targeted_segment.physical_size:
+        targeted_segment.virtual_size = targeted_segment.physical_size
+    else:
+        targeted_segment.physical_size = (int(targeted_segment.virtual_size / 512) + 1) * 512
+
+    # print (targeted_section.name)
+
+    if L > available_size:
+        L = available_size
+
+    upper = random.randrange(128)  # it was 256
+    temp = list(targeted_segment.content)
+    temp.append(1)
+    # temp = temp + [random.randint(0, upper) for _ in range(L)]
+    targeted_segment.content = temp
+
+    return elf_fparsed_to_bytes(fparsed)
+
 def build_lief(fbytes, fname):
     fparsed = lief.parse(fbytes)
     builder = lief.PE.Builder(fparsed)
@@ -460,7 +599,6 @@ def build_lief(fbytes, fname):
     ####new_fname = fname.replace(".exe", "_m.exe")
     new_fname = fname + "_m.exe"
     builder.write(new_fname)
-
 
 def build_lief_name(fbytes, original_fname, new_fname):
     pe = pefile.PE(original_fname)
