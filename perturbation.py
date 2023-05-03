@@ -56,7 +56,13 @@ def elf_overlay_append(fbytes, seed=None):
     upper = random.randrange(128)
     new_fbytes = fbytes + bytes([random.randint(0, upper) for _ in range(l)])
     new_fparsed = lief.parse(new_fbytes)
-    return elf_fparsed_to_bytes(new_fparsed)
+
+    try:
+        return elf_fparsed_to_bytes(new_fparsed)
+    except:
+        return fbytes
+
+    # return elf_fparsed_to_bytes(new_fparsed)
 
 
 def imports_append(fbytes, seed=None):
@@ -91,7 +97,12 @@ def elf_imports_append(fbytes, seed=None):
             fparsed.add_library(libname)
             break
 
-    return elf_fparsed_to_bytes(fparsed)
+    try:
+        return elf_fparsed_to_bytes(fparsed)
+    except:
+        return fbytes
+
+    # return elf_fparsed_to_bytes(fparsed)
 
 # mostly failed
 def section_add(fbytes, seed=None):
@@ -155,7 +166,13 @@ def elf_section_add(fbytes, seed=None):
     new_section.content = [random.randint(0, upper) for _ in range(L)]
     new_section.alignment = 8
     fparsed.add(new_section, False)
-    return elf_fparsed_to_bytes(fparsed)
+    try:
+        return elf_fparsed_to_bytes(fparsed)
+    except:
+        return fbytes
+
+
+    # return elf_fparsed_to_bytes(fparsed)
 
 def section_append_(fbytes, seed=None):
     random.seed(seed)
@@ -328,36 +345,44 @@ def break_optional_header_checksum(fbytes, seed=None):
 def inject_random_codecave_(fbytes):
     fparsed = lief.parse(fbytes)
     random.seed(None)
-    while True:
-        tsection = random.choice(fparsed.sections)
-        if len(tsection.content) != 0:
-            break
-    # print (target)
-    start_index = lastindex(tsection.content)
-    content = list(tsection.content)
-    content_len = len(content)
-    # pert_s = random.randrange(0,content_len-start_index)
-    for i in range(start_index + 10, start_index + 20):
-        if i >= content_len:
-            break
-        content[i] = random.randrange(0, 256)
-    tsection.content = content
+
+    if len(fparsed.sections) > 0:
+        for sec in fparsed.sections:
+            tsection = random.choice(fparsed.sections)
+            if len(tsection.content) != 0:
+                break
+        # print (target)
+        start_index = lastindex(tsection.content)
+        content = list(tsection.content)
+        content_len = len(content)
+        # pert_s = random.randrange(0,content_len-start_index)
+        for i in range(start_index + 10, start_index + 20):
+            if i >= content_len:
+                break
+            content[i] = random.randrange(0, 256)
+        tsection.content = content
     return fparsed
 # success
 def inject_random_codecave(fbytes):
     return fparsed_to_bytes(inject_random_codecave_(fbytes))
 
 def elf_inject_random_codecave(fbytes):
-    return elf_fparsed_to_bytes(inject_random_codecave_(fbytes))
+    try:
+        return elf_fparsed_to_bytes(inject_random_codecave_(fbytes))
+    except:
+        return fbytes
+
+    # return elf_fparsed_to_bytes(inject_random_codecave_(fbytes))
 
 def section_rename_(fbytes):
     random.seed(None)
     length = random.randrange(1, 6)
     fparsed = lief.parse(fbytes)
     name = "." + ''.join(random.sample([chr(i) for i in range(97, 123)], length))
-    # print(name)
-    targeted_section = random.choice(fparsed.sections)
-    targeted_section.name = name
+
+    if len(fparsed.sections) > 0:
+        targeted_section = random.choice(fparsed.sections)
+        targeted_section.name = name
     return fparsed
 
 # success
@@ -365,7 +390,11 @@ def section_rename(fbytes):
     return fparsed_to_bytes(section_rename_(fbytes))
 
 def elf_section_rename(fbytes):
-    return elf_fparsed_to_bytes(section_rename_(fbytes))
+    try:
+        return elf_fparsed_to_bytes(section_rename_(fbytes))
+    except:
+        return fbytes
+    # return elf_fparsed_to_bytes(section_rename_(fbytes))
 
 # success
 def pert_dos_stub(fbytes):
@@ -523,11 +552,13 @@ def elf_segment_add(fbytes, seed=None):
     lief.ELF.SEGMENT_TYPES.GNU_EH_FRAME, lief.ELF.SEGMENT_TYPES.GNU_PROPERTY, lief.ELF.SEGMENT_TYPES.GNU_STACK, lief.ELF.SEGMENT_TYPES.GNU_RELRO,
     lief.ELF.SEGMENT_TYPES.ARM_ARCHEXT, lief.ELF.SEGMENT_TYPES.ARM_UNWIND, lief.ELF.SEGMENT_TYPES.UNWIND])
     new_segment.content = [random.randint(0, upper) for _ in range(L)]
-    new_segment.alignment = 8
+    # new_segment.alignment = 0
     fparsed.add(new_segment)
 
-
-    return elf_fparsed_to_bytes(fparsed)
+    try:
+        return elf_fparsed_to_bytes(fparsed)
+    except:
+        return fbytes
 
 
 def elf_program_header_table(fbytes, seed=None):
@@ -590,7 +621,11 @@ def elf_segment_append(fbytes, seed=None):
     # temp = temp + [random.randint(0, upper) for _ in range(L)]
     targeted_segment.content = temp
 
-    return elf_fparsed_to_bytes(fparsed)
+    try:
+        return elf_fparsed_to_bytes(fparsed)
+    except:
+        return fbytes
+    # return elf_fparsed_to_bytes(fparsed)
 
 def build_lief(fbytes, fname):
     fparsed = lief.parse(fbytes)

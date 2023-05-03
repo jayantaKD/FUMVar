@@ -21,7 +21,7 @@ def AKMVG():
     skip = 20
     perturbation = 1
     peDirectory = '/home/infobeyond/workspace/VirusShare/AKMVG/malwares'
-    elfDirectory = '/home/infobeyond/workspace/VirusShare/AKMVG/elfMalwares'
+    elfDirectory = '/home/infobeyond/workspace/VirusShare/elfMalwares'
     peOutputPath = '/home/infobeyond/workspace/VirusShare/AKMVG/peoutput'
     elfOutputPath = '/home/infobeyond/workspace/VirusShare/AKMVG/elfoutput'
 
@@ -37,7 +37,8 @@ def AKMVG():
     #populationList = [10, 50, 100]
 
     generationList = [50]
-    populationList = [2, 5, 10, 15, 20]
+    populationList = [5, 10, 15, 20, 25]
+
 
 
     # with open(output_path, "a") as wf:
@@ -87,13 +88,14 @@ def AKMVG():
     # fileList = '/home/infobeyond/workspace/VirusShare/peMalwaresList'
     fileList = '/home/infobeyond/workspace/VirusShare/elfMalwaresList'
     fileStartNo = 1
-    fileEndNo = 10
+    fileEndNo = 20
     files = []
     with open(fileList) as f:
         counter = 1
         for filename in f:
             if fileStartNo <= counter <= fileEndNo:
                 files.append(filename.strip())
+            counter = counter + 1
 
     # Multiple malware in the directory
     for filename in files:
@@ -108,22 +110,30 @@ def AKMVG():
             for population in populationList:
                 savedFileName = gp.pickleSaveDirectory + str(filename) + '_' + str(generation) + '_' + str(population)
                 isSaved = os.path.isfile(savedFileName)
+                # isSaved = False
 
                 if isSaved:
                     with open(savedFileName, 'rb') as savedFile:
                         # Step 3
                         g = pickle.load(savedFile)
                         original = g.original
+                        original.generation_number = 80
                 else:
                     # print("* Scanning original malware sample")
                     fbytes = open(input_path, "rb").read()
                     original = gp.origin(input_path, fbytes, generation, filename, 'malonv')
+
+                    # with open(output_path+'_scores', "a") as wf:
+                    #     wf.write(str(original.nameWithoutPath) + ";"
+                    #              + str(original.vt_result) + ";\n")
+
                     print("\nOriginal Malware File: " + filename)
                     print("Malconv detection rate (%): " + str(round(original.vt_result*100, 2)))
 
                     print("\nStarting AKMVG Algorithm (Total Gen: "+str(generation)+", Populations per Gen: "
                           + str(population) + ")\n")
-                    # print("* 1 generation\n")
+                    print("* 1 generation\n")
+                    original.generation_number = 80
                     g = gp.GP(fbytes, population, perturbation, output_path, skip, original)
 
                 g.execute()
@@ -283,6 +293,26 @@ def transferOverSCP():
         os.waitpid(p.pid, 0)
         i = i + 1
 
+
+def collectBenignElfSlave(walkdir):
+    for root, subdirs, files in os.walk(walkdir):
+        for f in files:
+            if lief.is_elf(os.path.join(root, f)):
+                print(os.path.join(root, f))
+        for subdir in subdirs:
+            collectBenignElfSlave(subdir)
+            pass
+
+
+def collectBenignElfMaster():
+    walkdirs = ['/bin', '/etc', '/dev', '/home', '/lib', '/mnt', '/opt', '/root',
+                '/run', '/sbin', '/tmp', '/usr', '/var']
+
+    for walkdir in walkdirs:
+        if os.path.exists(walkdir) & os.path.isdir(walkdir):
+            collectBenignElfSlave(walkdir)
+        pass
+
 if __name__ == "__main__":
     # logging.getLogger().disabled = True
     # PEmalwareCollection()
@@ -341,7 +371,11 @@ if __name__ == "__main__":
 
     AKMVG()
 
+    # collectBenignElfMaster()
+
     # list_malware_names('/home/infobeyond/workspace/VirusShare/elfMalwares/','/home/infobeyond/workspace/VirusShare/elfMalwaresList')
+
+    # collectBenignElfMaster()
 
 
 
